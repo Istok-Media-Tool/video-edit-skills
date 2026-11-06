@@ -1,0 +1,9 @@
+{
+  "source": "/path/to/raw/C0112.MP4",
+  "cuts": "../../zoom/examples/sample/cuts.txt",
+  "positions": "../../zoom/examples/sample/pos.json",
+  "pre_filter": "transpose=1",
+  "ass": "captions.ass",
+  "words": "words.json",
+  "durations": [6.28, 6.04, 4.08, 5.32, 4.52, 2.28, 4.24, 1.72, 10.12, 2.68, 7.04]
+}

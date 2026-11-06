@@ -1,0 +1,12 @@
+{
+  "name": "video-edit-skills",
+  "owner": { "name": "vkasapic" },
+  "metadata": { "description": "Skills for editing talking-head reels with Claude Code" },
+  "plugins": [
+    {
+      "name": "video-edit",
+      "source": "./video-edit",
+      "description": "Cut raw takes by script, plan zoom/captions/B-roll in an interactive editor, title behind the head, music, chapter cards"
+    }
+  ]
+}
