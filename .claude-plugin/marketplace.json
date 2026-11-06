@@ -1,6 +1,6 @@
 {
   "name": "video-edit-skills",
-  "owner": { "name": "vkasapic" },
+  "owner": { "name": "Masterbox-AI" },
   "metadata": { "description": "Skills for editing talking-head reels with Claude Code" },
   "plugins": [
     {

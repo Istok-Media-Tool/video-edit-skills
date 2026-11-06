@@ -12,7 +12,7 @@ then zoom, captions, B-roll, close-ups, a title behind the head, music and chapt
 U Claude Code-u:
 
 ```
-/plugin marketplace add vkasapic/video-edit-skills
+/plugin marketplace add Masterbox-AI/video-edit-skills
 /plugin install video-edit@video-edit-skills
 ```
 
