@@ -52,6 +52,9 @@ def prepare():
 
 def push(msg, part):
     pj = os.path.join(HERE, "video-edit", ".claude-plugin", "plugin.json")
+    sh("git", "add", "-A")
+    if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=HERE).returncode == 0:
+        sys.exit("nothing changed - run prepare first (no version bump)")
     m = json.load(open(pj)); v = [int(x) for x in m["version"].split(".")]
     i = {"--major": 0, "--minor": 1, "--patch": 2}[part]; v[i] += 1; v[i + 1:] = [0] * (2 - i)
     m["version"] = ".".join(map(str, v)); open(pj, "w").write(json.dumps(m, indent=2, ensure_ascii=False) + "\n")

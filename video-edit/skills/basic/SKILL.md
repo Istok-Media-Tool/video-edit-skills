@@ -98,9 +98,9 @@ to. For each line, you'll typically see one of:
   discard the fragment.
 - **Multiple complete, full takes with the same wording** - these are
   genuine performance duplicates; you can't judge delivery/emotion from a
-  transcript alone, so either pick a reasonable default (e.g. the later
-  attempt, since people often settle into a take) and flag it, or ask the
-  user which one sounded better.
+  transcript alone, so cut with a reasonable default (e.g. the later
+  attempt, since people often settle into a take) and let the user pick in
+  the Dublovi mode (below).
 - **Multiple complete takes with genuinely different wording** (the speaker
   improvised differently each time) - this is a real content choice, not
   just a performance one. Present the alternatives to the user explicitly
