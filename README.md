@@ -17,7 +17,17 @@ U Claude Code-u:
 ```
 
 Repo je privatan, pa ti treba pristup (pozivnica na GitHubu) i prijava na GitHub
-na tvom računaru (`gh auth login`). Nova verzija: `/plugin marketplace update video-edit-skills`.
+na tvom računaru (`gh auth login`).
+
+## Automatsko ažuriranje (uradi jednom)
+
+Skillovi se redovno dopunjuju. Da bi ti Claude Code sam povlačio nove verzije:
+
+1. U Claude Code-u ukucaj `/plugin`
+2. Marketplaces → `video-edit-skills` → **Enable auto-update**
+
+Posle toga se nova verzija preuzima pri svakom pokretanju Claude Code-a.
+Ručno ažuriranje, kad god hoćeš: `/plugin marketplace update video-edit-skills`
 
 ## Šta je unutra
 
