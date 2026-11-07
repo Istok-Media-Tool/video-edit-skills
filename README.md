@@ -12,12 +12,11 @@ then zoom, captions, B-roll, close-ups, a title behind the head, music and chapt
 U Claude Code-u:
 
 ```
-/plugin marketplace add Masterbox-AI/video-edit-skills
+/plugin marketplace add Istok-Media-Tool/video-edit-skills
 /plugin install video-edit@video-edit-skills
 ```
 
-Repo je privatan, pa ti treba pristup (pozivnica na GitHubu) i prijava na GitHub
-na tvom računaru (`gh auth login`).
+Repo je javan, pa ti ne treba nikakav pristup ni prijava na GitHub.
 
 ## Automatsko ažuriranje (uradi jednom)
 

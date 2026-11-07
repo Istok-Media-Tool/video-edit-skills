@@ -1,6 +1,6 @@
 {
   "name": "video-edit-skills",
-  "owner": { "name": "Masterbox-AI" },
+  "owner": { "name": "Istok Media Tool" },
   "metadata": { "description": "Skills for editing talking-head reels with Claude Code" },
   "plugins": [
     {
