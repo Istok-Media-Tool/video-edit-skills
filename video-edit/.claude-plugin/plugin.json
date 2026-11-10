@@ -1,6 +1,6 @@
 {
   "name": "video-edit",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Edit talking-head reels with Claude Code: cut by script, zoom, captions, B-roll, close-ups, title behind the head, music per section, chapter cards",
   "author": {
     "name": "vkasapic"

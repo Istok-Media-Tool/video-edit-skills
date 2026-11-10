@@ -56,22 +56,40 @@ anything cinematic/EDM-adjacent - usually has real dynamic movement
 (calm open, rising tension, a climax) deserves a music window whose energy
 curve actually tracks that, not a flat or mismatched one.
 
-Measure it rather than guessing, in chunks across the track:
+Measure it rather than guessing - map the track first:
 
 ```bash
-for t in 0 10 20 30 40 50 60 70 80 90 100; do
-  vol=$(ffmpeg -nostdin -i track.mp3 -ss $t -t 10 -af volumedetect -f null - 2>&1 | grep mean_volume)
-  echo "t=${t}s: $vol"
-done
+python3 scripts/track_map.py track.mp3 --bpm 120 --out map.json --png map.png
 ```
 
-Look for a window matching the video's own shape - e.g. a steadily
-climbing mean_volume across the window usually means the video's own build
-(if it has one, such as punch-in zooms escalating toward a climax - see
-the **zoom** skill) will land on a genuinely building section of the
-track, not an arbitrary one. The track's intro is often naturally the
+(0.5 s for a 3-minute track.) It prints and saves:
+- **tempo and beats**, fine-tuned over the whole track (+-0.05 BPM - a 1 %
+  error would drift a beat by 2-3 s over 3 minutes); bar length in seconds;
+- **downbeats** (bar starts, 4/4 assumed) - natural places for a cut, a
+  zoom change, a B-roll switch or the start of the track window;
+- **sections** (8+ bars, or starting at a loudness jump) with a level
+  (low / mid / high, relative to this track) and a shape (steady / build
+  / falling);
+- **hits** - bars >= 4 dB louder than the bar before (a drop, an impact):
+  the strongest moments to put a key line, the emphasis caption or the
+  last sentence on;
+- **ending**: `fade` or `hard`.
+Read `map.png` (loudness per bar, shaded by section level, red = hit,
+ticks every 15 s) to see the arc at a glance.
+
+Always pass `--bpm` when the source states it (Epidemic Sound gives `bpm`
+for every recording): without it a slow track (70 BPM) can come out at
+double tempo (140) - the script prints the half/double alternatives.
+Tested on three Epidemic tracks (120, 100, 70 BPM): 120.0 and 100.0 without
+a hint, 140.0 for the 70 BPM one (exactly double), 70.0 with `--bpm 70`.
+
+Then pick a window that matches the video's shape: a video that opens calm
+and climbs to its last line wants a window that starts in a low/mid
+section and reaches a build or a hit near the last sentence; the hook
+can start on a downbeat. Start the window ON a downbeat (`--track-start`
+in mix_bed.py), never mid-bar. The track's intro is often naturally the
 right choice for a short-form video that itself opens calm and escalates -
-check before assuming so, but don't automatically skip it either.
+check the map before assuming so, but don't automatically skip it either.
 
 ## Step 3: Measure the voice level before mixing
 
