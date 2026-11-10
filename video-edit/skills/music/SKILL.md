@@ -91,6 +91,35 @@ in mix_bed.py), never mid-bar. The track's intro is often naturally the
 right choice for a short-form video that itself opens calm and escalates -
 check the map before assuming so, but don't automatically skip it either.
 
+### Lining the track up with the marked places (align_music.py)
+
+When the video has places the music must hit (accents chosen in the
+plan-editor's Muzika mode - Claude proposes them first, see plan-editor
+"Muzika"), don't pick the window by eye:
+
+```bash
+python3 scripts/align_music.py map.json --accents accents.json --words words.json \
+  --durations 6.28,... --sentences sentences.txt --out editor/music.json
+# or by hand: --at "22.3:poenta,62.5:promena" --video-len 102.1
+```
+
+It scores every start where an accent meets a track event: **promena**
+-> a section start (best if also a hit), **poenta** -> the strongest hit,
+**naglasak** -> a loud downbeat; the beat lands 30 ms before the word. A
+strong hit inside the video on an UNMARKED place costs points - the
+strongest beats are kept for the marked places. It prints the 3 best
+starts with what landed where (OK / ~ / --, error in ms), and the wasted
+hits. `--out` gives the start for `mix_bed.py --track-start` and the file
+for `make_plan_widget.py --music` so the user hears it in the editor.
+
+When one start can't hit every poenta / promena, it prints an Epidemic
+Sound **EditRecording** input that re-edits the track to the video's
+length with the track's biggest moment (the hit into its loudest part)
+placed on the last main accent - offer it, download the edit, map it
+again. Tested (Leveler 120 BPM, 102 s reel): 3 accents -> promena on a
+new section to the millisecond; 8 accents -> only the poenta and one
+naglasak landed, so keep the list short.
+
 ## Step 3: Measure the voice level before mixing
 
 ```bash

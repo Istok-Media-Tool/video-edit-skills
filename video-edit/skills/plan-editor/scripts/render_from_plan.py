@@ -57,7 +57,8 @@ def run(cmd, **kw):
 
 def parse_reply(text):
     out = {}
-    for key in ("PLAN_JSON", "SENTENCES_JSON", "CAPTIONS_JSON", "POS_JSON", "BROLL_JSON", "TAKES_JSON", "TITLE_JSON"):
+    for key in ("PLAN_JSON", "SENTENCES_JSON", "CAPTIONS_JSON", "POS_JSON", "BROLL_JSON", "TAKES_JSON", "TITLE_JSON",
+                "ACCENTS_JSON"):
         m = re.search(rf"^{key}:\s*(.+)$", text, re.M)
         if m:
             out[key] = json.loads(m.group(1))
@@ -140,6 +141,9 @@ def main():
 
     json.dump(R["PLAN_JSON"], open(work / "plan.json", "w"))
     (work / "sentences.txt").write_text("\n".join(R["SENTENCES_JSON"]) + "\n", encoding="utf-8")
+    if R.get("ACCENTS_JSON"):
+        # music accents: not rendered here - the music skill's align_music.py reads them
+        json.dump(R["ACCENTS_JSON"], open(work / "accents.json", "w"), ensure_ascii=False)
     durs = ",".join(str(d) for d in P["durations"])
 
     # 2. zoom

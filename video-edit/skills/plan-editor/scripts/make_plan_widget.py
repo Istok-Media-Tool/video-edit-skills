@@ -42,6 +42,15 @@ close-ups. Sends back "CLOSEUPS_JSON:" [{"name", "start", "end", "off"}] (all of
 them, new times, off moved with the start) only when one changed. Browser-pane
 version only (previews served by serve_plan_editor.py --closeups-dir).
 
+Music accents (always available, "Muzika" mode): the user clicks words
+where the music should hit - poenta (the strongest hit), naglasak (a strong
+downbeat), promena (the track moves to a new section). The widget sends back
+"ACCENTS_JSON:" [{"at": [clip, word], "kind", "word"}] (all of them, when
+there are any); --accents shows a previous one again. With --music
+(align_music.py's preview json) the aligned track plays with the video,
+in sync, and grey ♪ / ♩ mark the words a hit / section change of the track
+lands on now (music file served by serve_plan_editor.py --music-file).
+
 B-roll (optional, --broll): a previous BROLL_JSON reply, so its ranges show
 again. The widget's "B-roll" mode sends back "BROLL_JSON:" - render it with
 apply_broll.py.
@@ -53,7 +62,7 @@ word). Only works in the browser-pane version (serve_plan_editor.py) - the
 inline chat widget can't carry media, so don't pass these for show_widget.
 
 Usage:
-  make_plan_widget.py sentences.txt [plan.json] [--ass captions.ass --durations 6.28,6.08,...] [--broll broll.json] [--takes takes.json] [--closeups closeups.json] [--media cut.mp4 --words words.json] > widget.html
+  make_plan_widget.py sentences.txt [plan.json] [--ass captions.ass --durations 6.28,6.08,...] [--broll broll.json] [--accents accents.json] [--music music_preview.json] [--takes takes.json] [--closeups closeups.json] [--media cut.mp4 --words words.json] > widget.html
 """
 import argparse
 import json
@@ -174,6 +183,8 @@ def main():
     ap.add_argument("--pos", help="POS_JSON not yet applied to --ass (e.g. unsent slider moves), shown as changes")
     ap.add_argument("--broll", help="BROLL_JSON from a previous reply, to show existing B-roll ranges")
     ap.add_argument("--closeups", help="closeups.json from make_closeup_clips.py - shows the Close-up mode (browser pane only)")
+    ap.add_argument("--accents", help="ACCENTS_JSON from a previous reply, to show the music accents again")
+    ap.add_argument("--music", help="align_music.py --preview json: aligned track played with the video (browser pane)")
     ap.add_argument("--takes", help="takes.json from make_take_clips.py - shows the Dublovi mode (browser pane only)")
     a = ap.parse_args()
     sentences = [l.strip() for l in open(a.sentences, encoding="utf-8") if l.strip()]
@@ -227,6 +238,19 @@ def main():
     if cus and not a.media:
         sys.exit("--closeups needs --media (a render without the close-ups)")
     html = html.replace("__CLOSEUPS__", json.dumps(cus, ensure_ascii=False))
+    acc = json.load(open(a.accents, encoding="utf-8")) if a.accents else []
+    for x in acc:
+        if not (0 <= x["at"][0] < len(sentences) and 0 <= x["at"][1] < len(sentences[x["at"][0]].split())):
+            sys.exit(f"accents: {x} is outside the sentences")
+    html = html.replace("__ACCENTS__", json.dumps([{"at": x["at"], "kind": x["kind"]} for x in acc]))
+    mus = None
+    if a.music:
+        if not a.media:
+            sys.exit("--music needs --media")
+        m = json.load(open(a.music, encoding="utf-8"))
+        mus = {"src": "music/" + Path(m["track"]).name, "start": m["start"], "vol": m.get("vol", 0.35),
+               "marks": m.get("marks", [])}
+    html = html.replace("__MUSIC__", json.dumps(mus, ensure_ascii=False))
     media = None
     if a.media:
         if not (a.durations and a.words):

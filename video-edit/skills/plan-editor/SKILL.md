@@ -82,8 +82,11 @@ redesign, restyle or replace it with a different page.
 ## What the editor does
 
 Mode checkboxes at the top (Zum, Izmeni tekst, B-roll, Pozicija titla,
-Naslov, Close-up, Dublovi), one active at a time (the user asked to
-choose up front). With none checked the plan is only shown; clicking a word
+Naslov, Close-up, Dublovi, Muzika), one active at a time (the user asked to
+choose up front). ALL modes are ALWAYS shown (the user, 2026-11-10:
+"daj mi sve da vidim uvek"): one with nothing to work on yet (no captions
+for Pozicija titla, no `--takes` for Dublovi, no `--closeups` for
+Close-up) is dimmed, and clicking it says what it needs - never hide a mode. With none checked the plan is only shown; clicking a word
 then plays the video from that word. Zoom marks (blue) and B-roll ranges
 (green underline) stay visible in every mode.
 
@@ -122,13 +125,60 @@ then plays the video from that word. Zoom marks (blue) and B-roll ranges
   player and an "Ovaj je bolji" button; the take in the cut has a green
   frame. The user asked for this instead of picking takes in chat - see
   "Dublovi" below.
+- **Muzika**: the user and Claude decide TOGETHER where the music must
+  hit, so the track's strongest beats are saved for those places and the
+  sound follows the story and the picture (the user's request,
+  2026-11-10). Clicking a word cycles: poenta (the track's strongest hit -
+  punchline, key line, last sentence) -> naglasak (a strong bar start -
+  an emphasised term, a number) -> promena (the track moves into a new
+  section - a big turn in the story) -> none; each click also plays the
+  word ±1.2 s. With `--music` the aligned track plays under the video
+  from its chosen start ("Muzika u pregledu" toggles it), and grey ♪
+  (hit) / ♩ (new section) marks show where the track's strong moments
+  fall now - an unmarked ♪ is a wasted hit. Accents follow their word in
+  Izmeni tekst.
 - **Pošalji plan** sends a readable summary plus `PLAN_JSON`,
   `SENTENCES_JSON`, and when used `CAPTIONS_JSON` (`{"<dialogue idx>":
   text}`), `POS_JSON` (`{"<dialogue idx>": y}`), `BROLL_JSON`
   (`[{"from": [clip, word], "to": [clip, word], "media": "..."}]`),
   `TAKES_JSON` (`{"<clip>": <take index>}`, only clips whose take changed),
   `TITLE_JSON` (`{"text", "from": [clip, word], "to": [clip, word]}`, or
-  `{"text": ""}` = remove; only when changed).
+  `{"text": ""}` = remove; only when changed), `ACCENTS_JSON`
+  (`[{"at": [clip, word], "kind": "poenta|naglasak|promena", "word"}]`,
+  with a readable "Muzički akcenti" list; render_from_plan writes it to
+  `work/accents.json`).
+
+## Muzika - where the strongest beats go
+
+ALWAYS propose the places yourself first (the user asked: "ti možeš dati
+preporuku gde su ta mesta u videu"), then open the editor with them
+pre-marked so the user only confirms or changes them. Read the sentences
+and pick:
+- **promena** (1-2): where the story turns - "Then something strange
+  happened", the jump from the example to the viewer ("Since 2010...",
+  "A danas..."), the start of the payoff. On the turn's FIRST word.
+- **poenta** (1-2): the shock line and the last line - the word that
+  lands it ("extinct", the final "can"). On that word, not the sentence start.
+- **naglasak** (2-5): numbers, names, the key term ("overload",
+  "Thirty percent").
+Fewer is better: one start in a track can rarely serve more than 3-4
+accents (align_music.py prints what landed). In chat: list each proposal
+(word -> kind -> why) in one short line.
+
+```bash
+# accents.json = [{"at": [clip, word index in the shown sentence], "kind", "word"}]
+python3 $SKILLS/music/scripts/track_map.py track.mp3 --bpm 120 --out map.json
+python3 $SKILLS/music/scripts/align_music.py map.json --accents accents.json \
+  --words words.json --durations 6.28,... --sentences sentences.txt --out editor/music.json
+make_plan_widget.py ... --accents accents.json --music editor/music.json > editor/widget.html
+serve_plan_editor.py editor/widget.html --media render.mp4 --music-file track.mp3 ...
+```
+
+Word indices: count the words of the sentence as shown (split on spaces,
+punctuation stays on its word) - look them up by word, don't count by eye.
+When the user sends ACCENTS_JSON, re-run align_music.py with
+`work/accents.json`, regenerate the widget so they hear the new alignment,
+and mix with `mix_bed.py --track-start <start>` (music skill).
 
 ## Dublovi - choosing between takes
 
@@ -223,7 +273,7 @@ comes back as unsent changes. Test new tool features in a SEPARATE tab
 (tabs_create), never in the one the user is working in.
 
 In chat: list your zoom proposals with the reason for each (word -> level
--> why) and the four modes. Don't restate the sentences.
+-> why), your music accent proposals when music is planned, and the modes. Don't restate the sentences.
 
 Inline fallback (no render yet, or no browser pane): same command without
 `--media/--words`, load the visualize read_me (interactive) once, and pass
@@ -268,7 +318,7 @@ reply) and reopen the editor so they see it before rendering.
 ## Files
 
 - `assets/plan_editor_widget.html` - the tool (placeholders `__SENTENCES__`,
-  `__PLAN__`, `__CAPTIONS__`, `__BROLL__`, `__MEDIA__`, `__CAPSTYLE__`, `__POS__`, `__TAKES__`, `__TITLE__`, `__CLOSEUPS__`).
+  `__PLAN__`, `__CAPTIONS__`, `__BROLL__`, `__MEDIA__`, `__CAPSTYLE__`, `__POS__`, `__TAKES__`, `__TITLE__`, `__CLOSEUPS__`, `__ACCENTS__`, `__MUSIC__`).
   Change the tool only here; always generate, never hand-edit output.
 - `scripts/make_plan_widget.py` - fills the template (caption screens with
   timing and position, word times for playback, caption style for preview).

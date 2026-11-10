@@ -42,6 +42,7 @@
  padding:7px 13px;border-radius:999px;border:0.5px solid var(--border-strong);background:var(--surface-2);color:var(--text-secondary);user-select:none}
 .opt:hover{background:var(--surface-1);color:var(--text-primary)}
 .opt i{font-size:16px}
+.opt.off{opacity:.45}
 .opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}
 .opt:has(input:checked){background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
 .opt:has(input:focus-visible){outline:2px solid var(--border-accent);outline-offset:2px}
@@ -82,6 +83,11 @@
 .ce .v{font-variant-numeric:tabular-nums;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ce .v.mv{color:var(--text-accent);font-weight:500}
 .ce .k{font-weight:500}
+.w.ac{background:color-mix(in srgb,var(--accent-music,#9b51e0) 16%,transparent);border-color:var(--accent-music,#9b51e0)}
+.w sup.ak{color:var(--accent-music,#9b51e0);font-weight:600}
+.w .mk{font-size:11px;margin-left:2px;color:var(--text-muted)}
+.legend .la{background:color-mix(in srgb,var(--accent-music,#9b51e0) 30%,transparent);border:0.5px solid var(--accent-music,#9b51e0)}
+#mub{justify-self:start;height:28px}
 </style>
 <div class="modes" role="group" aria-label="Šta radiš">
 <label class="opt"><input type="checkbox" id="zoom"><i class="ti ti-zoom-in" aria-hidden="true"></i>Zum</label>
@@ -91,11 +97,13 @@
 <label class="opt" id="titleopt"><input type="checkbox" id="title"><i class="ti ti-heading" aria-hidden="true"></i>Naslov</label>
 <label class="opt" id="cuopt"><input type="checkbox" id="cu"><i class="ti ti-focus-2" aria-hidden="true"></i>Close-up</label>
 <label class="opt" id="takesopt"><input type="checkbox" id="takes"><i class="ti ti-columns-2" aria-hidden="true"></i>Dublovi</label>
+<label class="opt"><input type="checkbox" id="music"><i class="ti ti-music" aria-hidden="true"></i>Muzika</label>
 </div>
 <div id="help" style="margin-bottom:12px"></div>
-<div id="pvw" style="display:none"><div id="pvbox"><video id="pv" playsinline preload="auto"></video><video id="cuv" muted playsinline preload="auto"></video><div id="ov"></div><div id="ovt"></div></div>
+<div id="pvw" style="display:none"><div id="pvbox"><video id="pv" playsinline preload="auto"></video><video id="cuv" muted playsinline preload="auto"></video><div id="ov"></div><div id="ovt"></div><audio id="mu" preload="auto"></audio></div>
 <div id="side"><div class="now"><b id="nowc">Rečenica 1</b><span id="nowt">0:00 / 0:00</span></div>
-<div class="legend"><span><i class="lz"></i>zum</span><span><i class="lb"></i>B-roll</span><span><i class="lt"></i>naslov</span></div>
+<div class="legend"><span><i class="lz"></i>zum</span><span><i class="lb"></i>B-roll</span><span><i class="lt"></i>naslov</span><span><i class="la"></i>muzički akcenat</span></div>
+<button id="mub" style="display:none"></button>
 <div class="lg">▶ pored broja pušta celu rečenicu. Kad nijedan mod nije uključen, klik na reč pušta snimak od te reči.</div></div></div>
 <div id="list"></div>
 <div style="display:flex;gap:8px;align-items:center;margin-top:1rem;flex-wrap:wrap">
@@ -114,8 +122,12 @@ const POS0=__POS__;
 const TK=__TAKES__;
 const TI0=__TITLE__;
 const CU0=__CLOSEUPS__;
+const A0=__ACCENTS__;
+const MU=__MUSIC__;
+const AK=["poenta","naglasak","promena"],AKL={poenta:"poenta",naglasak:"naglasak",promena:"promena"};
+const HM="Muzika: klikni reč na kojoj muzika treba da udari. 1× poenta (najjači udarac pesme), 2× naglasak (jak takt), 3× promena (pesma prelazi u novi deo), 4× ukloni. Najjači udarci pesme čuvaju se za ova mesta."+(MU?" Sive ♪ pokazuju gde udarci izabrane pesme sada padaju; muziku u pregledu pališ i gasiš dugmetom pored videa.":"");
 const L=["1,0×","1,5×","1,7×","2,0×","2,2×"];
-const HN="Izaberi gore šta radiš: Zum, Izmeni tekst, B-roll, Pozicija titla, Naslov"+(CU0.length?", Close-up":"")+(Object.keys(TK).length?" ili Dublovi.":".");
+const HN="Izaberi gore šta radiš: Zum, Izmeni tekst, B-roll, Pozicija titla, Naslov, Close-up, Dublovi ili Muzika.";
 const HC="Close-up: pomeri klizač Početak ili Kraj (‹ › = jedan frejm). Ispod piše na kojoj reči close-up tada počinje ili prestaje; blizu kraja titla ili rečenice klizač se sam zalepi za nju. ▶ pored reda pušta baš taj prelaz, „Pogledaj“ ceo close-up.";
 const FR=0.04;
 const HT="Naslov: upiši tekst naslova (novi red = novi red na ekranu), pa klikni reč od koje naslov počinje i reč do koje traje. Pregled na videu pokazuje gde stoji.";
@@ -125,10 +137,10 @@ const HV="Zum: levo biraš kadar na početku rečenice. Klik na reč menja kadar
 const HE="Ispravi tekst. Novi red = novi red titla na ekranu, prazan red = sledeći ekran titla (broj ekrana mora ostati isti).";
 const HB="B-roll: klikni reč na kojoj snimak ili slika počinje, pa reč do koje traje (može i u sledećoj rečenici). Ispod izaberi fajl (Izaberi), upiši naziv ili putanju, ili opiši šta treba da se prikaže.";
 const ORIG=S0.map((s,i)=>(C[i]&&C[i].length)?C[i].map(x=>x[1]):[s]);
-let T,P,B,Y,K,TI,U,PEND,MODE="none",BAD={};
+let T,P,B,Y,K,TI,U,A,PEND,MODE="none",BAD={};
 const CAPS=[];C.forEach((c,i)=>(c||[]).forEach((x,k)=>CAPS.push({i,k,idx:x[0],st:x[2],en:x[3],y0:x[4]||0})));
 const defY=()=>CS?CS.y:0;
-function init(){T=ORIG.map(a=>a.slice());P=JSON.parse(JSON.stringify(P0));B=JSON.parse(JSON.stringify(B0));Y={};CAPS.forEach(c=>{if(c.y0)Y[c.idx]=c.y0});Object.entries(POS0).forEach(([k,v])=>{Y[k]=v});TI=TI0?{text:TI0.text,a:TI0.a.slice(),b:TI0.b.slice()}:{text:"",a:null,b:null};K={};Object.entries(TK).forEach(([i,v])=>{K[i]=v.current});U=CU0.map(c=>({st:c.st,en:c.en}));PEND=null;BAD={}}
+function init(){T=ORIG.map(a=>a.slice());P=JSON.parse(JSON.stringify(P0));B=JSON.parse(JSON.stringify(B0));Y={};CAPS.forEach(c=>{if(c.y0)Y[c.idx]=c.y0});Object.entries(POS0).forEach(([k,v])=>{Y[k]=v});TI=TI0?{text:TI0.text,a:TI0.a.slice(),b:TI0.b.slice()}:{text:"",a:null,b:null};K={};Object.entries(TK).forEach(([i,v])=>{K[i]=v.current});U=CU0.map(c=>({st:c.st,en:c.en}));A=S0.map(()=>({}));A0.forEach(x=>{A[x.at[0]][x.at[1]]=x.kind});PEND=null;BAD={}}
 init();
 const words=i=>T[i].join(" ").split(/\s+/).filter(Boolean);
 const nw=w=>w.toLowerCase().replace(/[^\p{L}\p{N}]/gu,"");
@@ -200,7 +212,7 @@ function showCap(c){if(!M)return;if(!(pv.currentTime>=c.st&&pv.currentTime<c.en)
 function play(i,t){
  if(t===undefined&&PLAYING===i&&!pv.paused){pv.pause();STOP=null;PLAYING=-1;draw();return}
  pv.currentTime=t===undefined?M.clips[i][0]:t;STOP=M.clips[i][1];PLAYING=i;pv.play();draw()}
-function setMode(m){MODE=m;document.getElementById("title").checked=m==="title";document.getElementById("takes").checked=m==="takes";document.getElementById("pos").checked=m==="pos";document.getElementById("pvw").classList.toggle("big",m==="pos");document.getElementById("zoom").checked=m==="zoom";document.getElementById("edit").checked=m==="edit";document.getElementById("broll").checked=m==="broll";document.getElementById("cu").checked=m==="cu";PEND=null;draw()}
+function setMode(m){MODE=m;document.getElementById("title").checked=m==="title";document.getElementById("takes").checked=m==="takes";document.getElementById("pos").checked=m==="pos";document.getElementById("pvw").classList.toggle("big",m==="pos");document.getElementById("zoom").checked=m==="zoom";document.getElementById("edit").checked=m==="edit";document.getElementById("broll").checked=m==="broll";document.getElementById("cu").checked=m==="cu";document.getElementById("music").checked=m==="music";PEND=null;draw()}
 function cuPanel(el){
  const end=M.clips[M.clips.length-1][1];
  CU0.forEach((c,k)=>{const u=U[k];
@@ -236,8 +248,22 @@ function cuPanel(el){
    lab();r.append(lb,mk("‹",-FR),rg,mk("›",FR),v,pl,rs);
    d.appendChild(r)});
   el.appendChild(d)})}
+// music preview: the aligned track plays with the video (track time = MU.start + video time);
+// MK = words a strong moment of the track lands on now (grey ♪), so the user sees what the music does
+const MK={};const mu=document.getElementById("mu");let MUON=true;
+if(MU&&M){mu.src=MU.src;mu.volume=MU.vol||0.35;
+ const mb=document.getElementById("mub");mb.style.display="";
+ const lab=()=>{mb.innerHTML='<i class="ti ti-music'+(MUON?"":"-off")+'" aria-hidden="true"></i> Muzika u pregledu: '+(MUON?"uključena":"isključena");mb.setAttribute("aria-pressed",MUON?"true":"false")};
+ mb.onclick=()=>{MUON=!MUON;if(!MUON)mu.pause();lab();msync()};lab();
+ const msync=()=>{if(!MUON)return;const want=MU.start+pv.currentTime;
+  if(pv.paused){mu.pause();if(Math.abs(mu.currentTime-want)>0.03)mu.currentTime=want}
+  else{if(Math.abs(mu.currentTime-want)>0.08)mu.currentTime=want;if(mu.paused)mu.play().catch(()=>{})}};
+ pv.addEventListener("play",msync);pv.addEventListener("pause",msync);pv.addEventListener("seeked",msync);
+ (function tick(){msync();requestAnimationFrame(tick)})();
+ (MU.marks||[]).forEach(m=>{let best=null;M.words.forEach((w,i)=>w.forEach((s,j)=>{if(s!=null&&s<=m.t+0.12&&(!best||s>best[0]))best=[s,i,j]}));
+  if(best){const k=best[1]+","+best[2];MK[k]=(MK[k]||"")+(m.kind==="hit"?"♪":"♩")}})}
 function draw(){
- document.getElementById("help").textContent=MODE==="edit"?HE:MODE==="broll"?HB:MODE==="zoom"?HV:MODE==="pos"?HP:MODE==="takes"?HK:MODE==="title"?HT:MODE==="cu"?HC:HN;
+ document.getElementById("help").textContent=MODE==="edit"?HE:MODE==="broll"?HB:MODE==="zoom"?HV:MODE==="pos"?HP:MODE==="takes"?HK:MODE==="title"?HT:MODE==="cu"?HC:MODE==="music"?HM:HN;
  const el=document.getElementById("list");el.innerHTML="";SYNC=[];
  document.querySelectorAll(".tk video").forEach(v=>v.pause());
  if(MODE==="cu"){cuPanel(el);return}
@@ -290,7 +316,7 @@ function draw(){
     if(parts.length!==ORIG[i].length){BAD[i]="Ovaj deo ima "+ORIG[i].length+(ORIG[i].length===1?" ekran":" ekrana")+" titla, a sada ih je "+parts.length+". Ekrane odvaja prazan red.";er.textContent=BAD[i];return}
     delete BAD[i];er.textContent="";
     const ow=words(i);T[i]=parts;const nwds=words(i);
-    P[i].m=remap(ow,nwds,P[i].m);
+    P[i].m=remap(ow,nwds,P[i].m);A[i]=remap(ow,nwds,A[i]);
     if(TI.a&&TI.a[0]===i)TI.a=[i,mapIdx(ow,nwds,TI.a[1])];if(TI.b&&TI.b[0]===i)TI.b=[i,mapIdx(ow,nwds,TI.b[1])];
     B.forEach(x=>{if(x.a[0]===i)x.a=[i,mapIdx(ow,nwds,x.a[1])];if(x.b&&x.b[0]===i)x.b=[i,mapIdx(ow,nwds,x.b[1])]});
     ta.classList.toggle("ch",T[i].some((x,k)=>x!==ORIG[i][k]))};
@@ -308,6 +334,8 @@ function draw(){
     let cls="w";if(j in P[i].m)cls+=" m";if(bi>=0)cls+=" b";if(PEND&&PEND[0]===i&&PEND[1]===j)cls+=MODE==="title"?" ts":" bs";if(MODE==="title"&&TI.a&&TI.b&&TI.text.trim()&&cmp(TI.a,[i,j])<=0&&cmp([i,j],TI.b)<=0)cls+=" t";
     if((MODE==="none"&&!M)||MODE==="pos"||MODE==="takes")cls+=" off";sp.className=cls;sp.textContent=w;
     if(j in P[i].m){const s=document.createElement("sup");s.textContent=L[P[i].m[j]];sp.appendChild(s)}
+    if(A[i][j]){sp.classList.add("ac");const s=document.createElement("sup");s.className="ak";s.textContent="♪ "+AKL[A[i][j]];sp.appendChild(s)}
+    if(MODE==="music"&&MK[i+","+j]){const s=document.createElement("span");s.className="mk";s.textContent=MK[i+","+j];s.title="ovde sada udara pesma";sp.appendChild(s)}
     if(bi>=0&&cmp(B[bi].a,[i,j])===0){const s=document.createElement("sub");s.textContent=bLabel(bi);sp.appendChild(s)}
     sp.onclick=()=>{
      if(MODE==="title"){
@@ -320,6 +348,9 @@ function draw(){
       else{let a=PEND,b=[i,j];if(cmp(b,a)<0)[a,b]=[b,a];
        if(B.some(x=>x.b&&cmp(x.a,b)<=0&&cmp(a,x.b)<=0)){PEND=null;draw();document.getElementById("senderr").textContent="B-roll delovi ne smeju da se preklapaju.";return}
        B.push({a,b,media:""});B.sort((x,y)=>cmp(x.a,y.a));PEND=null;document.getElementById("senderr").textContent=""}
+      draw();return}
+     if(MODE==="music"){const c=A[i][j];const n=c===undefined?0:AK.indexOf(c)+1;if(n<AK.length)A[i][j]=AK[n];else delete A[i][j];
+      if(M){const w=M.words[i]||[];const t0=w[Math.min(j,w.length-1)];if(t0!=null){pv.currentTime=Math.max(0,t0-1.2);STOP=t0+1.4;PLAYING=-1;pv.play()}}
       draw();return}
      if(MODE!=="zoom"){if(MODE==="none"&&M){const wt=M.words[i]||[];const t0=wt[Math.min(j,wt.length-1)];play(i,t0==null?M.clips[i][0]:t0)}return}
      const c=P[i].m[j];if(c===undefined)P[i].m[j]=0;else if(c<4)P[i].m[j]=c+1;else delete P[i].m[j];draw()};
@@ -369,10 +400,15 @@ function draw(){
   }
   r.append(n,sel,t);el.appendChild(r)})}
 draw();
-if(!CS||!CAPS.length)document.getElementById("posopt").style.display="none";
-if(!Object.keys(TK).length)document.getElementById("takesopt").style.display="none";
-if(!CU0.length)document.getElementById("cuopt").style.display="none";
-["zoom","edit","broll","pos","takes","title","cu"].forEach(m=>{document.getElementById(m).onchange=e=>setMode(e.target.checked?m:"none")});
+// every mode is always shown; one with nothing to work on is dimmed and says what it needs
+const OFF={};
+if(!CS||!CAPS.length)OFF.pos="Pozicija titla: ovaj video još nema titlove. Kad Claude napravi titlove (captions.ass), ovde pomeraš svaki ekran titla gore ili dole.";
+if(!Object.keys(TK).length)OFF.takes="Dublovi: za ovaj video nisu pripremljeni dublovi. Kad je rečenica snimljena više puta, Claude napravi klipove dublova i ovde biraš bolji.";
+if(!CU0.length)OFF.cu="Close-up: ovaj video nema close-up umetke. Kad Claude doda close-up snimke, ovde ih pomeraš ranije ili kasnije.";
+Object.keys(OFF).forEach(m=>{const o=document.getElementById(m+"opt");o.classList.add("off");o.title=OFF[m]});
+["zoom","edit","broll","pos","takes","title","cu","music"].forEach(m=>{document.getElementById(m).onchange=e=>{
+ if(OFF[m]){e.target.checked=false;setMode("none");document.getElementById("help").textContent=OFF[m];return}
+ setMode(e.target.checked?m:"none")}});
 document.getElementById("reset").onclick=()=>{init();setMode("none")};
 document.getElementById("send").onclick=()=>{
  const se=document.getElementById("senderr");
@@ -402,6 +438,9 @@ document.getElementById("send").onclick=()=>{
   if(Math.abs(u.st-c.st)>0.005)a.push("početak "+sgn(u.st-c.st)+" (na „"+wordAt(u.st)+"“)");
   if(Math.abs(u.en-c.en)>0.005)a.push("kraj "+sgn(u.en-c.en)+" (posle „"+wordAt(u.en-FR)+"“)");
   return a.length?c.name+": "+a.join(", "):null}).filter(Boolean).join("\n");
+ const AL=[];A.forEach((o,i)=>Object.keys(o).map(Number).sort((a,b)=>a-b).forEach(j=>AL.push({at:[i,j],kind:o[j],word:(words(i)[j]||"").replace(/[.,?!:;…]/g,"")})));
+ const ACH=JSON.stringify(AL.map(x=>[x.at,x.kind]))!==JSON.stringify(A0.map(x=>[x.at,x.kind]));
+ if(AL.length)msg+="\n\nMuzički akcenti"+(ACH?"":" (bez promena)")+":\n"+AL.map(x=>x.kind+": „"+x.word+"“ ("+(x.at[0]+1)+".)").join("\n");
  if(KC.length)msg+="\n\nDublovi:\n"+KC.map(i=>(+i+1)+". "+TK[i].takes[TK[i].current].label+" → "+TK[i].takes[K[i]].label+" („"+TK[i].takes[K[i]].text+"“)").join("\n");
  msg+="\n\nPLAN_JSON: "+JSON.stringify(P);
  msg+="\nSENTENCES_JSON: "+JSON.stringify(S0.map((_,i)=>words(i).join(" ")));
@@ -411,5 +450,6 @@ document.getElementById("send").onclick=()=>{
  if(TCH)msg+="\nTITLE_JSON: "+JSON.stringify(TI.text.trim()?{text:TI.text,from:TI.a,to:TI.b}:{text:""});
  if(KC.length){const o={};KC.forEach(i=>o[i]=K[i]);msg+="\nTAKES_JSON: "+JSON.stringify(o)}
  if(UC.length)msg+="\nCLOSEUPS_JSON: "+JSON.stringify(CU0.map((c,k)=>({name:c.name,start:U[k].st,end:U[k].en,off:Math.round((c.off+U[k].st-c.st)*100)/100})));
+ if(AL.length)msg+="\nACCENTS_JSON: "+JSON.stringify(AL);
  sendPrompt(msg)};
 </script>
