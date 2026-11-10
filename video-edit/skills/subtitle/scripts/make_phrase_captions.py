@@ -160,7 +160,7 @@ def main():
     ap.add_argument("--no-hook", action="store_true")
     ap.add_argument("--no-ellipsis", action="store_true")
     ap.add_argument("--size", default="1080x1920")
-    # Instagram safe zone (basic skill): everything inside x 120-960, y 260-1330
+    # Instagram safe zone (basic skill): everything inside x 150-930, y 260-1330
     # and out of the button rail (x > 860, y 950-1660) on 1080x1920. The
     # references put captions at ~47-55%, but there 2 lines would reach the
     # rail - so the body starts at 40% and the hook at 28%.
@@ -212,7 +212,7 @@ def main():
                 txt = re.sub(r"[^\w'’=-]", "", w[0]).upper()
                 cs = max(1, round((w[2] - w[1]) * 100 / max(1, len(txt))))
                 parts.append((txt, "".join(f"{{\\k{cs}}}{ch}" for ch in txt)))
-            lines, cur = [], []   # <= 14 letters a line keeps it inside x 120-960
+            lines, cur = [], []   # <= 14 letters a line keeps it inside x 150-930
             for txt, tagged in parts:
                 if cur and sum(len(x) + 1 for x, _ in cur) + len(txt) > 14:
                     lines.append(cur)
@@ -247,11 +247,11 @@ def main():
              "{bs},{ol},{sh},8,{m},{m},{y},1")
     styles = [
         style.format(name="Default", font="Inter Medium", fs=fs_body, sec="&H000000FF", box="&H26000000",
-                     bold=0, bs=3, ol=round(12 * k), sh=0, m=round(132 * k), y=round(a.body_y * H)),
+                     bold=0, bs=3, ol=round(12 * k), sh=0, m=round(162 * k), y=round(a.body_y * H)),
         style.format(name="Hook", font="Inter", fs=fs_hook, sec="&H000000FF", box="&H00000000",
-                     bold=-1, bs=3, ol=round(22 * k), sh=0, m=round(142 * k), y=round(a.hook_y * H)),
+                     bold=-1, bs=3, ol=round(22 * k), sh=0, m=round(172 * k), y=round(a.hook_y * H)),
         style.format(name="Emphasis", font=a.emphasis_font, fs=fs_emph, sec="&HFF000000", box="&H00000000",
-                     bold=0, bs=1, ol=0, sh=round(3 * k), m=round(120 * k), y=round(a.body_y * H)),
+                     bold=0, bs=1, ol=0, sh=round(3 * k), m=round(150 * k), y=round(a.body_y * H)),
     ]
     with open(a.out, "w", encoding="utf-8") as f:
         f.write(f"[Script Info]\nScriptType: v4.00+\nWrapStyle: 2\nScaledBorderAndShadow: yes\n"

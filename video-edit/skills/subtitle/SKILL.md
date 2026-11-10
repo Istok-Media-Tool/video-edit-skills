@@ -127,7 +127,7 @@ or `stt.py`'s .json). What it writes:
 - **Censor**: words in `--censor` get "=" for the first vowel ("s=x").
 
 Every screen must stay inside the Instagram safe zone (basic skill:
-x 120-960, y 260-1330, clear of the button rail). The defaults do on
+x 150-930, y 260-1330, clear of the button rail). The defaults do on
 1080x1920, but edited text (CAPITALS, "$10 BILLION", a long name) or a
 moved card can push out - measure every screen before burning:
 

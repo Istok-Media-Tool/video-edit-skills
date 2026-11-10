@@ -307,14 +307,33 @@ joke. On a 1080x1920 frame:
 - **Right - nothing in the button rail.** Like, comment, repost, send,
   save and the menu stack down the right side from about y = 950 to 1660,
   over x > ~860. Keep that block clear.
-- **Sides - at least 120 px in from the left and right edge.** Tall phones
-  fill the screen height and crop about 100 px off each side of a 9:16
-  video, so anything closer to an edge gets cut or ends up jammed against
-  it. Nothing may touch or hug an edge.
+- **Sides - at least 150 px in from the left and right edge.** Phones
+  taller than 9:16 fill the screen height and crop the sides of the video,
+  centred - per side, in 1080-wide video pixels, `(1080 - 1920 / ratio) / 2`:
 
-So every important element sits inside x 120-960, y 260-1330, and out of
+  | Screen | Phones | Cropped per side |
+  |---|---|---|
+  | 16:9 | iPhone 8 / SE | 0 |
+  | ~19.5:9 | iPhone 12-16, Samsung Galaxy S | ~97 px |
+  | 20:9 | Pixel, Galaxy A, many Xiaomi | ~108 px |
+  | 21:9 | Sony Xperia | ~129 px |
+  | 22:9 | Galaxy Z Flip (open) | ~147 px |
+
+  So ~100 px is where the picture *ends* on the common phones, not a margin.
+  150 px leaves ~50 px of air on iPhone/Samsung, ~40 on 20:9 and nothing
+  cut on an Xperia. Nothing may touch or hug the visible edge. Decoration
+  may come closer, never nearer than 120 px.
+
+So every important element (captions included) sits inside x 150-930,
+y 260-1330, and out of
 the rail block (x > 860, y 950-1660). Below, above and beside that, only
 decoration or texture that can be hidden.
+
+Instagram crops the same video in two more places, whatever the phone: in
+the main feed a Reel shows as 4:5 (about 285 px cut at the top and the
+bottom) and the profile grid shows 3:4 (about 240 px top and bottom). Keep
+the hook readable between y ~300 and 1330 and the cover's subject in the
+middle.
 
 Users caught every one of these on a real reel: a big opening title at
 y 1300-1750 sat under the description, a halo and devil horns over the
@@ -325,7 +344,7 @@ source with more headroom (move the person down) instead of letting the
 doodle leave the safe zone.
 
 Before showing frames for approval, draw the guide lines on a test frame
-(y 260 and 1330, x 120 and 960, plus the rail block) and check the
+(y 260 and 1330, x 150 and 930, plus the rail block) and check the
 bounding box of every graphic against them. Move it in if it crosses.
 
 ## Platform notes

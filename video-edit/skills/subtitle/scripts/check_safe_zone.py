@@ -2,7 +2,7 @@
 """
 Check every caption screen of an .ass file against the Instagram safe zone
 (basic skill, "Instagram safe zone"): on 1080x1920 everything must sit in
-x 120-960, y 260-1330 and out of the button rail (x > 860, y 950-1660).
+x 150-930, y 260-1330 and out of the button rail (x > 860, y 950-1660).
 
 Renders each Dialogue event once (middle of its time) on a flat grey frame
 with the same libass / fonts as the burn, and measures the real pixels -
@@ -44,7 +44,7 @@ def main():
     if not ev:
         sys.exit("no Dialogue events")
     k, kh = W / 1080, H / 1920
-    x0z, x1z, y0z, y1z = 120 * k, 960 * k, 260 * kh, 1330 * kh
+    x0z, x1z, y0z, y1z = 150 * k, 930 * k, 260 * kh, 1330 * kh
     rail_x, rail_y0, rail_y1 = 860 * k, 950 * kh, 1660 * kh
     sel = "+".join(f"between(t,{t:.3f},{t + 0.039:.3f})" for t, _, _ in ev)
     fonts = os.path.expanduser("~/Library/Fonts")
