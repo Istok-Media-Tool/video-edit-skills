@@ -18,7 +18,8 @@ Inputs:
                 so the player can seek)
   --takes-dir   folder of take clips from make_take_clips.py (served at takes/<name>)
   --closeups-dir  folder of close-up previews from make_closeup_clips.py (served at closeups/<name>)
-  --music-file  the aligned music track for the Muzika preview (served at music/<name>)
+  --music-file  the aligned music track(s) for the Muzika preview (served at music/<name>;
+                several for the A / B / C switch of rank_tracks.py)
   --reply       where to write the sent plan (default: plan_reply.txt next to widget)
   --port        default 8765
 
@@ -69,7 +70,7 @@ def main():
     ap.add_argument("--media", required=True)
     ap.add_argument("--takes-dir")
     ap.add_argument("--closeups-dir")
-    ap.add_argument("--music-file")
+    ap.add_argument("--music-file", nargs="+")
     ap.add_argument("--reply")
     ap.add_argument("--port", type=int, default=8765)
     a = ap.parse_args()
@@ -77,7 +78,7 @@ def main():
     media = Path(a.media).resolve()
     takes_dir = Path(a.takes_dir).resolve() if a.takes_dir else None
     cu_dir = Path(a.closeups_dir).resolve() if a.closeups_dir else None
-    music = Path(a.music_file).resolve() if a.music_file else None
+    music = {Path(f).name: Path(f).resolve() for f in (a.music_file or [])}
     reply = Path(a.reply or Path(a.widget).resolve().parent / "plan_reply.txt")
 
     class H(SimpleHTTPRequestHandler):
@@ -90,8 +91,11 @@ def main():
                 f = takes_dir / Path(self.path[len("/takes/"):]).name
                 if f.is_file():
                     return self._media(f)
-            if music and self.path == "/music/" + music.name:
-                return self._media(music)
+            if self.path.startswith("/music/"):
+                from urllib.parse import unquote
+                f = music.get(unquote(self.path[len("/music/"):]))
+                if f:
+                    return self._media(f)
             if cu_dir and self.path.startswith("/closeups/"):
                 f = cu_dir / Path(self.path[len("/closeups/"):]).name
                 if f.is_file():

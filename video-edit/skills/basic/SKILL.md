@@ -368,6 +368,16 @@ Before showing frames for approval, draw the guide lines on a test frame
 (y 260 and 1330, x 150 and 930, plus the rail block) and check the
 bounding box of every graphic against them. Move it in if it crosses.
 
+## Shared scripts - one copy, here
+
+`stt.py`, `groq_stt.py`, `cut_and_concat.sh` and `venc.py` live ONLY in
+`basic/scripts/`. The copies in `zoom/scripts/` (stt, groq_stt,
+cut_and_concat) and in `music/scripts/` / `plan-editor/scripts/` (venc)
+are symlinks to these, so every skill runs the same code. Fix them only
+here, never replace a link with a copy: two copies of `cut_and_concat.sh`
+had already drifted apart (the one here lacked `setsar=1`, so zoom crops
+in the third column failed to concat).
+
 ## Platform notes
 
 - macOS has no GNU `timeout` by default - don't wrap ffmpeg calls in one;

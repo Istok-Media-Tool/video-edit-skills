@@ -41,7 +41,7 @@
 # appear in the final video (seconds, may have decimals):
 #   start<TAB>end                  - plain cut, no extra video filter
 #   start<TAB>end<TAB><vf-filter>  - cut with a video filter chain applied
-#     (e.g. the crop/scale filter from compute_crop.py for a punch-in zoom)
+#     (e.g. a crop/scale filter for a punch-in zoom - see the "zoom" skill)
 #
 # Env overrides: PRE_PAD (default 0.15), POST_PAD (default 0.35),
 # CRF (default 18), FADE_IN (default 0.005), VENC=x264 to skip VideoToolbox

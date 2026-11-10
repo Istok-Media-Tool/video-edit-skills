@@ -154,6 +154,10 @@ def media_info(media, words_path, durs, sentences):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from apply_broll import find_span, norm
     words = json.load(open(words_path, encoding="utf-8"))
+    # word_times.py gives [[w, s, e], ...]; stt.py gives {"words": [{"word", "start", "end"}, ...]}
+    if isinstance(words, dict):
+        words = words["words"]
+    words = [[w["word"], w["start"], w["end"]] if isinstance(w, dict) else w for w in words]
     starts = [0.0]
     for d in durs:
         starts.append(starts[-1] + d)
@@ -184,7 +188,8 @@ def main():
     ap.add_argument("--broll", help="BROLL_JSON from a previous reply, to show existing B-roll ranges")
     ap.add_argument("--closeups", help="closeups.json from make_closeup_clips.py - shows the Close-up mode (browser pane only)")
     ap.add_argument("--accents", help="ACCENTS_JSON from a previous reply, to show the music accents again")
-    ap.add_argument("--music", help="align_music.py --preview json: aligned track played with the video (browser pane)")
+    ap.add_argument("--music", help="align_music.py --out json (one aligned track) or rank_tracks.py --out json "
+                    "(A / B / C to switch tracks), played with the video (browser pane)")
     ap.add_argument("--takes", help="takes.json from make_take_clips.py - shows the Dublovi mode (browser pane only)")
     a = ap.parse_args()
     sentences = [l.strip() for l in open(a.sentences, encoding="utf-8") if l.strip()]
@@ -248,8 +253,11 @@ def main():
         if not a.media:
             sys.exit("--music needs --media")
         m = json.load(open(a.music, encoding="utf-8"))
-        mus = {"src": "music/" + Path(m["track"]).name, "start": m["start"], "vol": m.get("vol", 0.35),
-               "marks": m.get("marks", [])}
+        # one aligned track (align_music.py --out) or a ranked list (rank_tracks.py --out)
+        mus = [{"src": "music/" + Path(x["track"]).name, "track": Path(x["track"]).name, "start": x["start"],
+                "vol": x.get("vol", 0.35), "marks": x.get("marks", []), "label": x.get("label"),
+                "title": x.get("title"), "info": x.get("info")}
+               for x in (m["tracks"] if "tracks" in m else [m])]
     html = html.replace("__MUSIC__", json.dumps(mus, ensure_ascii=False))
     media = None
     if a.media:

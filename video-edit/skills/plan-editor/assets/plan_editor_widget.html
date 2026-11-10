@@ -88,6 +88,8 @@
 .w .mk{font-size:11px;margin-left:2px;color:var(--text-muted)}
 .legend .la{background:color-mix(in srgb,var(--accent-music,#9b51e0) 30%,transparent);border:0.5px solid var(--accent-music,#9b51e0)}
 #mub{justify-self:start;height:28px}
+#mus{display:flex;flex-wrap:wrap;gap:6px;justify-self:start}#mus button{height:28px;font-size:13px}#mus button.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent);font-weight:600}
+#musi{font-size:12px;color:var(--color-text-secondary)}
 </style>
 <div class="modes" role="group" aria-label="Šta radiš">
 <label class="opt"><input type="checkbox" id="zoom"><i class="ti ti-zoom-in" aria-hidden="true"></i>Zum</label>
@@ -103,7 +105,7 @@
 <div id="pvw" style="display:none"><div id="pvbox"><video id="pv" playsinline preload="auto"></video><video id="cuv" muted playsinline preload="auto"></video><div id="ov"></div><div id="ovt"></div><audio id="mu" preload="auto"></audio></div>
 <div id="side"><div class="now"><b id="nowc">Rečenica 1</b><span id="nowt">0:00 / 0:00</span></div>
 <div class="legend"><span><i class="lz"></i>zum</span><span><i class="lb"></i>B-roll</span><span><i class="lt"></i>naslov</span><span><i class="la"></i>muzički akcenat</span></div>
-<button id="mub" style="display:none"></button>
+<button id="mub" style="display:none"></button><div id="mus" role="group" aria-label="Izbor pesme"></div><div id="musi"></div>
 <div class="lg">▶ pored broja pušta celu rečenicu. Kad nijedan mod nije uključen, klik na reč pušta snimak od te reči.</div></div></div>
 <div id="list"></div>
 <div style="display:flex;gap:8px;align-items:center;margin-top:1rem;flex-wrap:wrap">
@@ -123,9 +125,10 @@ const TK=__TAKES__;
 const TI0=__TITLE__;
 const CU0=__CLOSEUPS__;
 const A0=__ACCENTS__;
-const MU=__MUSIC__;
+// one aligned track, or a ranked list (rank_tracks.py) the user switches between with A / B / C
+const MUS=(m=>m?(Array.isArray(m)?m:[m]):[])(__MUSIC__);let MU=MUS[0]||null,MUK=0;
 const AK=["poenta","naglasak","promena"],AKL={poenta:"poenta",naglasak:"naglasak",promena:"promena"};
-const HM="Muzika: klikni reč na kojoj muzika treba da udari. 1× poenta (najjači udarac pesme), 2× naglasak (jak takt), 3× promena (pesma prelazi u novi deo), 4× ukloni. Najjači udarci pesme čuvaju se za ova mesta."+(MU?" Sive ♪ pokazuju gde udarci izabrane pesme sada padaju; muziku u pregledu pališ i gasiš dugmetom pored videa.":"");
+const HM="Muzika: klikni reč na kojoj muzika treba da udari. 1× poenta (najjači udarac pesme), 2× naglasak (jak takt), 3× promena (pesma prelazi u novi deo), 4× ukloni. Najjači udarci pesme čuvaju se za ova mesta."+(MU?" Sive ♪ pokazuju gde udarci izabrane pesme sada padaju (♩ nov deo pesme, ✂ spoj u aranžmanu - preslušaj ga)"+(MUS.length>1?"; dugmad A, B, C… pored videa menjaju pesmu (poređane po tome koliko mesta pogađaju), svaka svira od svog najboljeg početka":"")+"; muziku u pregledu pališ i gasiš dugmetom pored videa.":"");
 const L=["1,0×","1,5×","1,7×","2,0×","2,2×"];
 const HN="Izaberi gore šta radiš: Zum, Izmeni tekst, B-roll, Pozicija titla, Naslov, Close-up, Dublovi ili Muzika.";
 const HC="Close-up: pomeri klizač Početak ili Kraj (‹ › = jedan frejm). Ispod piše na kojoj reči close-up tada počinje ili prestaje; blizu kraja titla ili rečenice klizač se sam zalepi za nju. ▶ pored reda pušta baš taj prelaz, „Pogledaj“ ceo close-up.";
@@ -250,8 +253,15 @@ function cuPanel(el){
   el.appendChild(d)})}
 // music preview: the aligned track plays with the video (track time = MU.start + video time);
 // MK = words a strong moment of the track lands on now (grey ♪), so the user sees what the music does
-const MK={};const mu=document.getElementById("mu");let MUON=true;
-if(MU&&M){mu.src=MU.src;mu.volume=MU.vol||0.35;
+let MK={};const mu=document.getElementById("mu");let MUON=true;
+function marks(){MK={};(MU.marks||[]).forEach(m=>{let best=null;M.words.forEach((w,i)=>w.forEach((s,j)=>{if(s!=null&&s<=m.t+0.12&&(!best||s>best[0]))best=[s,i,j]}));
+  if(best){const k=best[1]+","+best[2];MK[k]=(MK[k]||"")+(m.kind==="hit"?"♪":m.kind==="join"?"✂":"♩")}})}
+function pickTrack(k){MUK=k;MU=MUS[k];const t=pv?pv.currentTime:0;mu.src=MU.src;mu.volume=MU.vol||0.35;marks();
+ const bx=document.getElementById("mus");bx.innerHTML="";
+ if(MUS.length>1)MUS.forEach((x,i)=>{const b=document.createElement("button");b.textContent=(x.label||String.fromCharCode(65+i))+(x.title?" · "+x.title:"");
+  b.className=i===k?"on":"";b.setAttribute("aria-pressed",i===k?"true":"false");b.onclick=()=>{pickTrack(i);draw()};bx.appendChild(b)});
+ document.getElementById("musi").textContent=MU.info||"";}
+if(MU&&M){pickTrack(0);
  const mb=document.getElementById("mub");mb.style.display="";
  const lab=()=>{mb.innerHTML='<i class="ti ti-music'+(MUON?"":"-off")+'" aria-hidden="true"></i> Muzika u pregledu: '+(MUON?"uključena":"isključena");mb.setAttribute("aria-pressed",MUON?"true":"false")};
  mb.onclick=()=>{MUON=!MUON;if(!MUON)mu.pause();lab();msync()};lab();
@@ -260,8 +270,7 @@ if(MU&&M){mu.src=MU.src;mu.volume=MU.vol||0.35;
   else{if(Math.abs(mu.currentTime-want)>0.08)mu.currentTime=want;if(mu.paused)mu.play().catch(()=>{})}};
  pv.addEventListener("play",msync);pv.addEventListener("pause",msync);pv.addEventListener("seeked",msync);
  (function tick(){msync();requestAnimationFrame(tick)})();
- (MU.marks||[]).forEach(m=>{let best=null;M.words.forEach((w,i)=>w.forEach((s,j)=>{if(s!=null&&s<=m.t+0.12&&(!best||s>best[0]))best=[s,i,j]}));
-  if(best){const k=best[1]+","+best[2];MK[k]=(MK[k]||"")+(m.kind==="hit"?"♪":"♩")}})}
+}
 function draw(){
  document.getElementById("help").textContent=MODE==="edit"?HE:MODE==="broll"?HB:MODE==="zoom"?HV:MODE==="pos"?HP:MODE==="takes"?HK:MODE==="title"?HT:MODE==="cu"?HC:MODE==="music"?HM:HN;
  const el=document.getElementById("list");el.innerHTML="";SYNC=[];
@@ -335,7 +344,7 @@ function draw(){
     if((MODE==="none"&&!M)||MODE==="pos"||MODE==="takes")cls+=" off";sp.className=cls;sp.textContent=w;
     if(j in P[i].m){const s=document.createElement("sup");s.textContent=L[P[i].m[j]];sp.appendChild(s)}
     if(A[i][j]){sp.classList.add("ac");const s=document.createElement("sup");s.className="ak";s.textContent="♪ "+AKL[A[i][j]];sp.appendChild(s)}
-    if(MODE==="music"&&MK[i+","+j]){const s=document.createElement("span");s.className="mk";s.textContent=MK[i+","+j];s.title="ovde sada udara pesma";sp.appendChild(s)}
+    if(MODE==="music"&&MK[i+","+j]){const s=document.createElement("span");s.className="mk";s.textContent=MK[i+","+j];s.title=MK[i+","+j].includes("✂")?"ovde je spoj u aranžmanu - preslušaj":"ovde sada udara pesma";sp.appendChild(s)}
     if(bi>=0&&cmp(B[bi].a,[i,j])===0){const s=document.createElement("sub");s.textContent=bLabel(bi);sp.appendChild(s)}
     sp.onclick=()=>{
      if(MODE==="title"){
@@ -440,6 +449,7 @@ document.getElementById("send").onclick=()=>{
   return a.length?c.name+": "+a.join(", "):null}).filter(Boolean).join("\n");
  const AL=[];A.forEach((o,i)=>Object.keys(o).map(Number).sort((a,b)=>a-b).forEach(j=>AL.push({at:[i,j],kind:o[j],word:(words(i)[j]||"").replace(/[.,?!:;…]/g,"")})));
  const ACH=JSON.stringify(AL.map(x=>[x.at,x.kind]))!==JSON.stringify(A0.map(x=>[x.at,x.kind]));
+ if(MUS.length>1)msg+="\n\nIzabrana pesma: "+(MU.label||"")+" – "+(MU.title||MU.track)+" (od "+Math.floor(MU.start/60)+":"+(MU.start%60).toFixed(1).padStart(4,"0")+")";
  if(AL.length)msg+="\n\nMuzički akcenti"+(ACH?"":" (bez promena)")+":\n"+AL.map(x=>x.kind+": „"+x.word+"“ ("+(x.at[0]+1)+".)").join("\n");
  if(KC.length)msg+="\n\nDublovi:\n"+KC.map(i=>(+i+1)+". "+TK[i].takes[TK[i].current].label+" → "+TK[i].takes[K[i]].label+" („"+TK[i].takes[K[i]].text+"“)").join("\n");
  msg+="\n\nPLAN_JSON: "+JSON.stringify(P);
@@ -451,5 +461,6 @@ document.getElementById("send").onclick=()=>{
  if(KC.length){const o={};KC.forEach(i=>o[i]=K[i]);msg+="\nTAKES_JSON: "+JSON.stringify(o)}
  if(UC.length)msg+="\nCLOSEUPS_JSON: "+JSON.stringify(CU0.map((c,k)=>({name:c.name,start:U[k].st,end:U[k].en,off:Math.round((c.off+U[k].st-c.st)*100)/100})));
  if(AL.length)msg+="\nACCENTS_JSON: "+JSON.stringify(AL);
+ if(MUS.length>1)msg+="\nMUSIC_JSON: "+JSON.stringify({track:MU.track,start:MU.start,label:MU.label});
  sendPrompt(msg)};
 </script>

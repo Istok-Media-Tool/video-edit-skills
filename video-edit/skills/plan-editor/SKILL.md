@@ -136,7 +136,13 @@ then plays the video from that word. Zoom marks (blue) and B-roll ranges
   from its chosen start ("Muzika u pregledu" toggles it), and grey ♪
   (hit) / ♩ (new section) marks show where the track's strong moments
   fall now - an unmarked ♪ is a wasted hit. Accents follow their word in
-  Izmeni tekst.
+  Izmeni tekst. With rank_tracks.py's list (`--music` json with
+  "tracks") buttons A / B / C next to the video switch the track, each
+  from its own best start, with how many places it hits. With
+  arrange_music.py's music.json the buttons are the re-arranged versions
+  (A / B / C, then D... for Epidemic edits added by `epidemic_edit.py
+  collect --merge`), each played from its own start, and ✂ marks the
+  joins of the arrangement - the seams to listen to.
 - **Pošalji plan** sends a readable summary plus `PLAN_JSON`,
   `SENTENCES_JSON`, and when used `CAPTIONS_JSON` (`{"<dialogue idx>":
   text}`), `POS_JSON` (`{"<dialogue idx>": y}`), `BROLL_JSON`
@@ -146,7 +152,8 @@ then plays the video from that word. Zoom marks (blue) and B-roll ranges
   `{"text": ""}` = remove; only when changed), `ACCENTS_JSON`
   (`[{"at": [clip, word], "kind": "poenta|naglasak|promena", "word"}]`,
   with a readable "Muzički akcenti" list; render_from_plan writes it to
-  `work/accents.json`).
+  `work/accents.json`), `MUSIC_JSON` (`{"track", "start", "label"}` -
+  the picked track, only with A / B / C; written to `work/music_choice.json`).
 
 ## Muzika - where the strongest beats go
 
@@ -167,18 +174,22 @@ accents (align_music.py prints what landed). In chat: list each proposal
 
 ```bash
 # accents.json = [{"at": [clip, word index in the shown sentence], "kind", "word"}]
-python3 $SKILLS/music/scripts/track_map.py track.mp3 --bpm 120 --out map.json
-python3 $SKILLS/music/scripts/align_music.py map.json --accents accents.json \
-  --words words.json --durations 6.28,... --sentences sentences.txt --out editor/music.json
-make_plan_widget.py ... --accents accents.json --music editor/music.json > editor/widget.html
-serve_plan_editor.py editor/widget.html --media render.mp4 --music-file track.mp3 ...
+M=$SKILLS/music/scripts; ACC="--accents accents.json --words words.json --durations 6.28,... --sentences sentences.txt"
+python3 $M/rank_tracks.py music/*.mp3 --meta music/meta.json $ACC --work music/rank   # which tracks
+python3 $M/arrange_music.py music/rank/<pick>.map.json $ACC --out-dir music/arr        # A / B / C
+python3 $M/verify_music.py music/arr/arr_A.wav --arrange music/arr/arrange.json --variant A
+make_plan_widget.py ... --accents accents.json --music music/arr/music.json > editor/widget.html
+serve_plan_editor.py editor/widget.html --media render.mp4 --music-file music/arr/arr_A.wav music/arr/arr_B.wav music/arr/arr_C.wav ...
 ```
 
-Word indices: count the words of the sentence as shown (split on spaces,
-punctuation stays on its word) - look them up by word, don't count by eye.
-When the user sends ACCENTS_JSON, re-run align_music.py with
-`work/accents.json`, regenerate the widget so they hear the new alignment,
-and mix with `mix_bed.py --track-start <start>` (music skill).
+The whole flow (Epidemic search, stems, Epidemic edits, sound effects,
+mix) is in the music skill. Word indices: count the words of the sentence
+as shown (split on spaces, punctuation stays on its word) - look them up by
+word, don't count by eye. When the user sends ACCENTS_JSON, re-run
+arrange_music.py (and verify) with `work/accents.json`, regenerate the
+widget so they hear the new versions; with MUSIC_JSON mix the picked one
+with `mix_bed.py --track-start <its start>` (0 for an arrangement, the
+shift for an Epidemic edit).
 
 ## Dublovi - choosing between takes
 

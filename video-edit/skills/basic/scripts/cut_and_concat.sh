@@ -85,7 +85,7 @@ while IFS=$'\t' read -r s e vf; do
 
   vf_args=()
   if [ -n "${vf:-}" ] && [ "$vf" != "-" ]; then
-    vf_args=(-vf "$vf")
+    vf_args=(-vf "$vf,setsar=1")  # crops not exactly 9:16 give each clip its own SAR, which the concat filter refuses
   fi
 
   # whole frames; audio exactly as long as the video (see 4.)
