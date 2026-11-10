@@ -194,12 +194,24 @@ user found that it broke the rhythm ("mora biti sve zbijenije i tečnije"),
 so for their videos tighten every cut before assembling:
 
 ```bash
-python3 scripts/tighten_cuts.py audio.wav selections.txt tight.txt
+python3 scripts/tighten_cuts.py audio.wav selections.txt tight.txt --beat 1.0 --tail 2.0
 PRE_PAD=0.04 POST_PAD=0.08 scripts/cut_and_concat.sh "<source_video>" tight.txt final_output.mp4 <abs workdir>
 ```
 
 It moves each edge to where speech really starts / ends (-42 dB) and
-splits any internal pause over 0.30s. On a real reel this took 1:48
+splits any internal pause over 0.25s.
+
+The numbers come from the user's two hand-edited reference reels (vodič
+stila, 2026-11-10): median gap between words 0.06s, a new shot every ~3s,
+cuts always between words (often mid-sentence, on a phrase boundary), and
+only ONE pause left on purpose - a ~1s beat before the last line
+(`--beat 1.0`) and 1.5-3s after it while the speaker silently looks into
+the camera (`--tail 2.0`; music holds there, see the music skill's
+`mix_bed.py`). Both extend only into real silence of the source; the script
+says when there was less. If the speaker talks, laughs or reaches for the
+camera right after the last line, drop `--tail` or shorten it.
+
+On a real reel the tightening took 1:48
 to 1:41 with every word intact. Afterwards, check by transcribing the
 result: every word of the kept text must still be there. Timings of
 anything placed on the old cut (close-ups, captions, title) must be

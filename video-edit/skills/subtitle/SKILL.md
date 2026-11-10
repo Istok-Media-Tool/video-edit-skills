@@ -89,6 +89,57 @@ clip's own start/end to match where speech actually starts/stops (if the
 clips carry pre/post padding from the cut step, subtract it back out) so
 captions don't appear/disappear on dead air.
 
+## The user's reference style: phrase cards (default for new videos)
+
+From the user's two hand-edited reference reels (vodič stila, 2026-11-10).
+Use it for every new video unless the user asks for the older
+sentence-per-screen style (Step 3 template) or the project already has
+captions in it:
+
+```bash
+python3 scripts/make_phrase_captions.py words.json captions.ass \
+  [--emphasis "the one key term"] [--censor "seks,sex"] [--size 1080x1920]
+```
+
+`words.json` = word times of the FINAL cut (zoom skill's `word_times.py`,
+or `stt.py`'s .json). What it writes:
+- **Hook** (style `Hook`): the whole first sentence on one card, Inter
+  Bold 68 on a solid black box, short lines (<= 24 characters, names kept
+  together), first line at 28% of the height, held for the whole sentence. Before burning, edit its text
+  the way the references do: numbers as digits, the 1-2 key words in
+  CAPITALS ("from ZERO to $10 BILLION"). The plan-editor shows it in the
+  Naslov mode.
+- **Body** (style `Default`): one spoken phrase per card - 3-8 words, 1-2
+  lines, <= 32 characters a line - Inter Medium 54 on a ~85% black box,
+  top-anchored with the first line at 40% of the height (the references
+  sit at ~47-55%, but there a 2-line card reaches Instagram's button rail;
+  move single cards in the plan-editor if they cover the face or an
+  object). A phrase ends at punctuation or a pause of 0.18s+; a card cut by
+  length never ends on "his / the / na / za"; 1-2 leftover words of a
+  sentence stay on the card before. 0.12s empty gap between cards.
+- **"…"** ends a card that stops mid-sentence (trailing commas are still
+  dropped, see the punctuation convention below). `--no-ellipsis` turns it
+  off.
+- **Emphasis** (style `Emphasis`), ONCE per video, on the main thesis: the
+  term in a huge condensed font (Impact by default, `--emphasis-font`), no
+  box, letters revealed one by one while the words are spoken (karaoke
+  `\k` with an invisible secondary colour).
+- **Censor**: words in `--censor` get "=" for the first vowel ("s=x").
+
+Every screen must stay inside the Instagram safe zone (basic skill:
+x 120-960, y 260-1330, clear of the button rail). The defaults do on
+1080x1920, but edited text (CAPITALS, "$10 BILLION", a long name) or a
+moved card can push out - measure every screen before burning:
+
+```bash
+python3 scripts/check_safe_zone.py captions.ass
+```
+
+It renders each screen with the burn's libass/fonts and prints the ones
+that cross (exit code 1). Break such a line shorter or move the card. Then
+look at a few frames (Step 6) as always: hook, a 2-line body card, the
+emphasis card.
+
 ## Step 3: Write the ASS file
 
 Use this as a starting template - it's the exact style confirmed on a real

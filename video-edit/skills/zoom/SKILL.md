@@ -64,6 +64,22 @@ subtle creep); at least one real return to wide after the opening - and
 give the reason for each change. The user's reply (`PLAN_JSON`,
 `SENTENCES_JSON`) is the confirmed plan; render it exactly in Step 5.
 
+**Different shot size on every cut (the user's style, 2026-11-10).** In the
+two hand-edited reference reels ("Mouse Paradise", "Johanna / Van Gogh")
+the shot size changes on EVERY jump cut between clips - wide, medium,
+tight - and never stays the same across a cut, so each cut reads as a
+second camera instead of a glitch. This does not contradict lesson 1: the
+cuts already exist (one per clip), the zoom only makes them look
+intentional; punch-ins mechanically added INSIDE clips are still what
+looks cheap. So in the starting proposal:
+- each clip's start level (`"s"`) differs from the level the previous clip
+  ends on, by 2+ steps where the content allows (e.g. 0 <-> 2/3/4);
+- word-anchored changes inside a clip stay content-driven as above.
+Render with `--alternate` (Step 5; `"alternate": true` in the
+plan-editor's project.json): it changes any clip the final plan left at
+the same size as the end of the previous clip and prints which - tell the
+user. Without the flag it only reports those cuts.
+
 Applying the plan needs word timestamps (Step 5) and per-clip subject
 positions (Step 2).
 
@@ -153,7 +169,7 @@ Only after this passes should you render all segments and concatenate.
    ```bash
    python3 scripts/build_zoom_selections.py --cuts cuts.txt --positions pos.json \
      --plan plan.json --sentences sentences.txt --words words.json \
-     --durations 6.28,6.08,... [--pre-filter transpose=1] > selections.txt
+     --durations 6.28,6.08,... [--pre-filter transpose=1] --alternate > selections.txt
    ```
    Read the match report it prints: every planned word should say `exact`
    (or a sensible `fuzzy~` spelling variant - Whisper may spell names

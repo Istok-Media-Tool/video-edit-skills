@@ -31,6 +31,12 @@ Inputs:
                 footage shot sideways (rotation happens BEFORE cropping,
                 and --positions must be measured on the rotated frame)
   --lead        seconds the change lands before the word starts (default 0.08)
+  --alternate   the user's cut style (reference reels, 2026-11-10): the shot
+                size changes on EVERY cut between clips, so a jump cut reads
+                as a camera change. A clip that would start at the same level
+                the previous clip ended on gets a different start level
+                (as far as possible from both the previous shot and its own next level).
+                Without the flag those clips are only reported.
 
 Prints a match report (planned word -> matched spoken word and its time) so
 every placement can be checked before rendering.
@@ -107,6 +113,8 @@ def main():
     ap.add_argument("--lead", type=float, default=0.08)
     ap.add_argument("--wide-zoom", type=float, default=None,
                     help="zoom for level 0 instead of the --baseline crop, e.g. 1.3")
+    ap.add_argument("--alternate", action="store_true",
+                    help="change the shot size on every cut between clips")
     ap.add_argument("--headroom", type=float, default=None,
                     help="headroom fraction passed to compute_crop.py (default there: 0.09)")
     a = ap.parse_args()
@@ -129,6 +137,7 @@ def main():
         starts.append(starts[-1] + d)
     pre = (a.pre_filter + ",") if a.pre_filter else ""
 
+    prev_end = None
     for i in range(n):
         cs, ce = starts[i], starts[i + 1]
         spoken = [(norm(w), s - cs) for w, s, _ in words if cs - 0.05 <= s < ce]
@@ -142,6 +151,23 @@ def main():
             t = round(max(0.0, t - a.lead), 2)
             print(f"clip {i + 1}: '{tw[j]}' -> {LEVELS[lvl]} at {t:.2f}s in clip ({how})", file=sys.stderr)
             changes.append((t, lvl))
+        # a change at 0.0 replaces the start level
+        while len(changes) > 1 and changes[1][0] <= 0.0:
+            changes.pop(0)
+        if prev_end is not None and changes[0][1] == prev_end:
+            if a.alternate:
+                # as far as possible from the previous shot AND from this clip's own next level
+                nxt = changes[1][1] if len(changes) > 1 else None
+                new = max((l for l in range(len(LEVELS)) if l not in (prev_end, nxt)),
+                          key=lambda l: (min(abs(l - prev_end), abs(l - nxt) if nxt is not None else 9),
+                                         abs(l - nxt) if nxt is not None else 0, abs(l - prev_end)))
+                print(f"clip {i + 1}: starts at {LEVELS[new]} instead of {LEVELS[prev_end]} (--alternate)",
+                      file=sys.stderr)
+                changes[0] = (0.0, new)
+            else:
+                print(f"clip {i + 1}: same shot size as the end of clip {i} ({LEVELS[prev_end]}) - "
+                      f"the cut will look like a jump; use --alternate or change the plan", file=sys.stderr)
+        prev_end = changes[-1][1]
         cx, ht = pos[i]
         crops = [crop(cx, ht, lvl, a.wide_zoom) for _, lvl in changes]
         if len(changes) == 1:

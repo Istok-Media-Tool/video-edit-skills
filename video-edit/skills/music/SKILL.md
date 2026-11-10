@@ -120,6 +120,28 @@ than that, something (usually `amix` normalization) is quietly attenuating
 the voice and needs fixing before calling the mix done, not after the user
 reports it sounds too quiet or the music sounds too loud.
 
+## The user's reference style: bed under everything + held ending
+
+From the user's two hand-edited reference reels (vodič stila, 2026-11-10):
+quiet ambient music (piano/pad) under the WHOLE video, ~20-25 dB under the
+voice, so no pause is dead silent; after the last word the music comes up
+and holds while the speaker silently looks into the camera (the basic
+skill's `tighten_cuts.py --tail`), fades out, ~0.5s of silence, then an
+impact/whoosh sting (~-5 dBFS peak) on the very end. Whole mix at -14 LUFS.
+One command does all of it (Steps 3-5 are measured inside it):
+
+```bash
+python3 scripts/mix_bed.py video.mp4 track.mp3 out.mp4 --words words.json \
+  [--track-start 12] [--under 22] [--lift 8] [--sting hit.wav --sting-at 101.3]
+```
+
+`--words` = word times of this video (last word end = where the lift
+starts). Pick `--track-start` with Step 2. A sting can come from the user's
+library or the ElevenLabs connector (sound effects); without `--sting` the
+music just fades out before the end. Then check: `ebur128=peak=true` on the
+output should read I ≈ -14 LUFS and peak ≤ -1 dBFS, and listen points are
+the last word and the sting.
+
 ## Delivering
 
 Same pattern as the other video skills - the mix output is full quality;

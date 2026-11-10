@@ -15,8 +15,16 @@ Writes start<TAB>end[<TAB>vf] lines for cut_and_concat.sh; cut them with
   PRE_PAD=0.04 POST_PAD=0.08 cut_and_concat.sh ...
 (nothing gets clipped: the edges already sit on the real speech).
 
+The user's reference reels (vodič stila, 2026-11-10) cut every pause: the
+median gap between words is 0.06 s and only a handful of gaps in a whole
+reel are longer than 0.25 s - hence --max-pause 0.25. The one exception is
+on purpose: a dramatic beat before the last line (--beat 1.0) and a silent
+look into the camera after it (--tail 2.0). Both only extend into real
+silence of the source (the room tone and the speaker's face stay natural),
+never into the next speech.
+
 Usage:
-  tighten_cuts.py audio.wav selections.txt tight.txt [--max-pause 0.30]
+  tighten_cuts.py audio.wav selections.txt tight.txt [--max-pause 0.25] [--beat 1.0] [--tail 2.0]
 """
 import argparse
 import re
@@ -41,7 +49,11 @@ def main():
     ap.add_argument("wav")
     ap.add_argument("selections")
     ap.add_argument("out")
-    ap.add_argument("--max-pause", type=float, default=0.30)
+    ap.add_argument("--max-pause", type=float, default=0.25)
+    ap.add_argument("--beat", type=float, default=0.0,
+                    help="seconds of pause kept before the LAST selection (dramatic beat)")
+    ap.add_argument("--tail", type=float, default=0.0,
+                    help="seconds kept after the last word (silent look before the end card)")
     a = ap.parse_args()
     S = silences(a.wav)
     rows = []
@@ -60,6 +72,18 @@ def main():
                 cur = y
         rows.append((cur, ne, vf))
         print(f"{s:.2f}-{e:.2f} -> {ns:.2f}-{ne:.2f}", file=sys.stderr)
+    def extend(k, sec, what):
+        s, e, vf = rows[k]
+        room = min([y for x, y in S if x <= e + 0.1 and y > e] or [e + 0.05]) - 0.05 - e
+        add = max(0.0, min(sec, room))
+        rows[k] = (s, e + add, vf)
+        print(f"{what}: +{add:.2f}s after {e:.2f}" + (f" (only {room:.2f}s of silence there)" if add < sec else ""),
+              file=sys.stderr)
+
+    if a.beat and len(rows) > 1:
+        extend(len(rows) - 2, a.beat, "beat before the last line")
+    if a.tail and rows:
+        extend(len(rows) - 1, a.tail, "tail after the last word")
     with open(a.out, "w", encoding="utf-8") as f:
         for s, e, vf in rows:
             f.write("\t".join([f"{s:.3f}", f"{e:.3f}", *vf]) + "\n")

@@ -25,6 +25,8 @@ project.json (paths relative to the json file):
     "words": "words.json",         word_times.py output for that same render
     "durations": [6.28, 6.04, ...] clip durations of that render
     "wide_zoom": 1.3               optional: zoom for "1,0x" instead of the baseline crop
+    "alternate": true              optional: different shot size on every cut
+                                   (build_zoom_selections.py --alternate)
   }
 
 Usage:
@@ -146,7 +148,8 @@ def main():
                           "--positions", rel("positions"), "--plan", work / "plan.json",
                           "--sentences", work / "sentences.txt", "--words", rel("words"),
                           "--durations", durs, "--pre-filter", P.get("pre_filter", "")]
-                         + (["--wide-zoom", str(P["wide_zoom"])] if P.get("wide_zoom") else []),
+                         + (["--wide-zoom", str(P["wide_zoom"])] if P.get("wide_zoom") else [])
+                         + (["--alternate"] if P.get("alternate") else []),
                          stdout=open(sel, "w"), stderr=subprocess.PIPE, text=True, check=True).stderr
     print(rep, file=sys.stderr, end="")
     if "no match" in rep:
