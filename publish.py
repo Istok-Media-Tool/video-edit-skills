@@ -2,8 +2,10 @@
 """
 Publish the local skills (~/.claude/skills) to this plugin repo for the course.
 
-  python3 publish.py prepare   copy the skills in, swap personal examples for
-                               generic ones, check for leaks, show what changed
+  python3 publish.py prepare [skill ...]
+                               copy the skills in (all, or only the named ones),
+                               swap personal examples for generic ones, check
+                               for leaks, show what changed
   python3 publish.py push "what changed" [--major|--minor|--patch]
                                bump the version, commit and push
 
@@ -25,10 +27,14 @@ NOTE = "\n> `$SKILLS` below is the folder that holds this skill's folder: the pa
 
 def sh(*a, **k): return subprocess.run(a, cwd=HERE, check=True, text=True, **k)
 
-def prepare():
-    for s in SKILLS:
-        sh("rsync", "-a", "--delete", "--exclude", "__pycache__", "--exclude", ".DS_Store", "--exclude", "examples/",
-           f"{SRC}/{s}/", f"{DST}/{s}/")
+def prepare(only=None):
+    for s in only or SKILLS:
+        if s not in SKILLS:
+            sys.exit(f"unknown skill {s} (one of {', '.join(SKILLS)})")
+        # publishing only some skills: links into the others (shared scripts) become real files,
+        # so a skill never points at a newer file the repo doesn't have yet
+        sh("rsync", "-a", *(["--copy-links"] if only else []), "--delete", "--exclude", "__pycache__",
+           "--exclude", ".DS_Store", "--exclude", "examples/", f"{SRC}/{s}/", f"{DST}/{s}/")
     bad = []
     for root, _, files in os.walk(DST):
         for f in files:
@@ -65,6 +71,6 @@ def push(msg, part):
     print("published", m["version"])
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "prepare": prepare()
+    if len(sys.argv) > 1 and sys.argv[1] == "prepare": prepare(sys.argv[2:])
     elif len(sys.argv) > 2 and sys.argv[1] == "push": push(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "--minor")
     else: print(__doc__)

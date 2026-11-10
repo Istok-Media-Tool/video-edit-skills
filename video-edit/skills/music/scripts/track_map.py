@@ -18,10 +18,27 @@ What it measures (numpy only):
   track) and a shape (steady / build / falling).
 - hits: bars where loudness jumps >= 4 dB from the bar before (a drop, an
   impact) - the strongest moments to land a key line on.
-- ending: "hard" (stops on a hit / held chord) or "fade".
+- closure: the track's own ending - its last loud attack (final chord / hit),
+  how long it rings and how strong it is (0..1); "ending" = "hard" when >= 0.5,
+  else "fade". arrange_music.py ends every version on it; rank_tracks.py
+  weighs it (the user: every video ends on a clear, emphasized closure).
+- builds: the run-up into each hit (bars where the music keeps rising) -
+  place the build under the lines before a poenta, not only the hit.
+- joins: for every bar, the bars the music can JUMP to without it being
+  heard (play bar i, then bar j instead of i+1). Cost 0 = the natural next
+  bar; it compares the bars around the jump (loudness, low end,
+  brightness, density, harmony) and the spectrum right at the seam, and
+  adds 0.3 when j sits at another place in its 4-bar phrase. Below ~0.5
+  a jump is usually inaudible, above ~1 it is heard - arrange_music.py
+  builds new versions of the track from these.
+- stems (--drums / --bass, e.g. Epidemic Sound's stem previews): beats and
+  bar starts come from the drum stem alone (no melody in the way), and
+  every bar gets the bass level (bass_db) - where the bass drops out or
+  comes in is a section change the full mix can hide.
 
 Usage:
-  track_map.py track.mp3 [--bpm 120] [--out map.json] [--png map.png]
+  track_map.py track.mp3 [--bpm 120] [--drums drums.mp3] [--bass bass.mp3]
+               [--out map.json] [--png map.png]
 Prints a table of sections and hits; --png draws loudness per bar with the
 sections, hits and minute marks (Read the PNG to look at it).
 """
@@ -112,12 +129,57 @@ def track_beats(onset, fps, bpm):
     return np.array(beats) / fps
 
 
+def closure(frame_db, fps, med, bars):
+    """The track's own ending: its LAST loud attack (the final chord / hit) and how it rings out.
+    {"t": the attack (s), "ring": seconds until the sound is gone, "strength": 0..1, "what"}.
+    Strong = as loud as the body of the track, a clear attack, nothing louder after it, and it
+    dies within a few seconds; a slow fade-out (the track sinks for bars first) scores low."""
+    sm = np.convolve(frame_db, np.ones(5) / 5, "same")             # ~50 ms smoothing
+    n = len(sm)
+    alive = np.nonzero(sm > med - 40)[0]
+    if not len(alive):
+        return {"t": None, "ring": 0.0, "strength": 0.0, "what": "tiho"}
+    e = int(alive[-1])
+    end_t = e / fps
+    d = max(1, int(0.1 * fps))
+    rise = np.full(n, -99.0)
+    rise[d:] = sm[d:] - sm[:-d]
+    lo = max(d, int((end_t - 12) * fps))
+    # attacks: a rise of >= 2 dB in 0.1 s while loud (within 6 dB of the track's median bar)
+    cand = [k for k in range(lo, e) if rise[k] >= 2 and sm[k] >= med - 6
+            and rise[k] == rise[max(0, k - d):k + d].max()]
+    if not cand:
+        return {"t": None, "ring": 0.0, "strength": 0.0, "what": "utapa se (nema završnog udarca)"}
+    k = cand[-1]
+    pk = k + int(np.argmax(sm[k:k + int(0.25 * fps)]))               # the attack's peak
+    t = k / fps - 0.05
+    ring = end_t - t
+    level = sm[pk]
+    after = sm[pk + int(0.4 * fps):e].max() if e > pk + int(0.4 * fps) else level - 20
+    loud = float(np.clip((level - (med - 6)) / 6, 0, 1))
+    attack = float(np.clip(rise[k] / 6, 0, 1))
+    clean = 1.0 if after <= level + 1 else 0.3                       # nothing re-attacks after it
+    ringf = 1.0 if 0.3 <= ring <= 6 else 0.5 if ring <= 10 else 0.2   # dies away, not a long fade
+    # the track sinking for bars before the "ending" = a fade-out with one last bump
+    body = sm[max(0, k - int(8 * fps)):max(1, k - int(4 * fps))]
+    sinking = bool(len(body)) and np.median(body) - level > 6
+    s = loud * (0.5 + 0.5 * attack) * clean * ringf * (0.3 if sinking else 1.0)
+    on = bool(len(bars)) and np.abs(np.asarray(bars) - t).min() <= 0.08
+    what = ("završni udarac" if ring < 1.2 else "završni akord odzvoni") + (" na taktu" if on else "")
+    if s < 0.5:
+        what = "utapa se" if sinking else "slab kraj"
+    return {"t": round(float(t), 3), "ring": round(float(ring), 2), "strength": round(float(min(1.0, s)), 2),
+            "what": what, "on_bar": bool(on)}
+
+
 def main():
     ap = argparse.ArgumentParser(usage=__doc__)
     ap.add_argument("track")
     ap.add_argument("--bpm", type=float)
     ap.add_argument("--out")
     ap.add_argument("--png")
+    ap.add_argument("--drums", help="drum stem of the same track (beats and bars from it)")
+    ap.add_argument("--bass", help="bass stem of the same track (bass level per bar)")
     a = ap.parse_args()
 
     x = load(a.track)
@@ -131,8 +193,19 @@ def main():
     low = freqs < 150
     onset_low = np.concatenate([[0], flux[:, low].sum(1)])
 
-    bpm = tempo(onset, fps, a.bpm)
-    beats = track_beats(onset, fps, bpm)
+    def stem(path):
+        y = load(path)
+        y = np.pad(y, (0, max(0, len(x) - len(y))))[:len(x)]
+        Sy = stft_mag(y)[:len(S)]
+        Sy = np.pad(Sy, ((0, len(S) - len(Sy)), (0, 0)))
+        fy = np.maximum(np.diff(np.log1p(Sy * 10), axis=0), 0)
+        return Sy, np.concatenate([[0], fy.sum(1)]), np.concatenate([[0], fy[:, low].sum(1)])
+
+    beat_onset = onset
+    if a.drums:      # the drum stem alone: kicks and snares without the melody's onsets
+        _, beat_onset, onset_low = stem(a.drums)
+    bpm = tempo(beat_onset, fps, a.bpm)
+    beats = track_beats(beat_onset, fps, bpm)
     bi = np.clip((beats * fps).astype(int), 0, len(onset) - 1)
     # downbeat phase: most low-end onset around the beat
     lowpk = np.array([onset_low[max(0, i - 2):i + 3].max() for i in bi])
@@ -150,6 +223,10 @@ def main():
     pc = np.round(12 * np.log2(np.maximum(freqs, 1) / 440) + 69).astype(int) % 12
     band = (freqs > 60) & (freqs < 4000)
     chroma = np.stack([power[:, band & (pc == k)].sum(1) for k in range(12)], 1)
+    bass_db = None
+    if a.bass:
+        Sb = stem(a.bass)[0]
+        bass_db = 10 * np.log10((Sb ** 2).sum(1) / (power.sum(1).mean() + 1e-10) + 1e-10)
     feats, rows = [], []
     edges = list(bars) + [dur]
     for i in range(len(bars)):
@@ -165,6 +242,8 @@ def main():
         ch = ch / (np.linalg.norm(ch) + 1e-9)
         rows.append({"t": round(float(edges[i]), 2), "db": round(float(db), 1), "low_db": round(float(ldb), 1),
                      "bright": round(br), "density": round(dens, 2)})
+        if bass_db is not None:
+            rows[-1]["bass_db"] = round(float(10 * np.log10(np.mean(10 ** (bass_db[sl] / 10)))), 1)
         feats.append(np.concatenate([[db / 6, ldb / 6, br / 600, dens * 4], ch * 1.5]))
     F = np.array(feats)
     nb = len(F)
@@ -216,25 +295,81 @@ def main():
         shape = "build" if slope > 4 else "falling" if slope < -4 else "steady"
         sections.append({"start": rows[s0]["t"], "end": round(float(edges[s1]), 2), "bars": s1 - s0,
                          "db": round(m, 1), "level": level, "shape": shape})
-    tail = frame_db[int(max(0, dur - 6) * fps):]
-    t_sl = np.polyfit(np.arange(len(tail)) / fps, tail, 1)[0] if len(tail) > 10 else 0
-    ending = "fade" if t_sl < -3 else "hard"
+    # the run-up into each hit: bars before it where the music keeps rising
+    # (a dip of up to 1 dB is allowed), at least 3 dB in all
+    builds = []
+    for h in hits:
+        k = h - 1
+        while k > 0 and dbs[k] - dbs[k - 1] > -1 and h - k < 16:
+            k -= 1
+        if h - k >= 2 and dbs[h - 1] - dbs[k] >= 3:
+            builds.append({"start": rows[k]["t"], "hit": rows[h]["t"], "bars": h - k,
+                           "rise_db": round(float(dbs[h - 1] - dbs[k]), 1)})
+
+    # the bass coming in / dropping out (>= 8 dB bar to bar) - a section change the full mix can hide
+    bass_ev = []
+    if bass_db is not None:
+        bd = [r["bass_db"] for r in rows]
+        bass_ev = [{"t": rows[i]["t"], "kind": "in" if bd[i] > bd[i - 1] else "out"}
+                   for i in range(1, nb) if abs(bd[i] - bd[i - 1]) >= 8 and max(bd[i], bd[i - 1]) > -40]
+
+    # place in the 4-bar phrase, counted from each section's start
+    sec_of = np.searchsorted(np.array(se[1:]), np.arange(nb), side="right")
+    phrase = [(i - se[sec_of[i]]) % 4 for i in range(nb)]
+    for i in range(nb):
+        rows[i]["phrase"] = int(phrase[i])
+
+    # joins: play bar i, then bar j instead of i + 1. The bars around the seam
+    # must sound alike (j like i+1, j-1 like i) and so must the spectrum right
+    # at it (the last 70 ms of i like the last 70 ms of j-1, the first 70 ms of
+    # j like the first of i+1). Normalised so the median jump costs 1.
+    sf = lambda t: min(len(L) - 1, max(0, int(round(t * fps))))
+    head = np.array([L[sf(edges[i]):sf(edges[i]) + 3].mean(0) for i in range(nb)])
+    tailv = np.array([L[max(0, sf(edges[i + 1]) - 3):sf(edges[i + 1])].mean(0) if sf(edges[i + 1]) > sf(edges[i])
+                      else head[i] for i in range(nb)])
+    Dsp = lambda A, B: np.linalg.norm(A[:, None] - B[None], axis=2)
+    joins = []
+    if nb > 3:
+        I = np.arange(nb - 1)                    # bar i has a natural next bar i+1
+        J = np.arange(1, nb)                     # bar j has a natural previous bar j-1
+        c_ctx = 0.5 * (D[np.ix_(I + 1, J)] + D[np.ix_(I, J - 1)])
+        c_seam = 0.5 * (Dsp(tailv[I], tailv[J - 1]) + Dsp(head[J], head[I + 1]))
+        cost = c_ctx / (np.median(c_ctx) + 1e-9) * 0.6 + c_seam / (np.median(c_seam) + 1e-9) * 0.4
+        cost += 0.3 * (np.array(phrase)[J][None, :] != np.array(phrase)[I + 1][:, None])
+        for ii in I:
+            order = np.argsort(cost[ii])
+            for jj in order[:12]:
+                j = int(J[jj])
+                if j != ii + 1 and cost[ii, jj] < 1.2:
+                    joins.append([int(ii), j, round(float(cost[ii, jj]), 2)])
+    close = closure(frame_db, fps, float(np.median([r["db"] for r in rows])), bars)
+    ending = "hard" if close["strength"] >= 0.5 else "fade"
 
     out = {"track": a.track, "duration": round(dur, 2), "bpm": round(bpm, 1),
            "bar_seconds": round(240 / bpm, 3), "beats": [round(float(b), 3) for b in beats],
            "downbeats": [round(float(b), 3) for b in bars], "bars": rows, "sections": sections,
-           "hits": [rows[i]["t"] for i in hits], "ending": ending}
+           "hits": [rows[i]["t"] for i in hits], "builds": builds, "bass": bass_ev, "ending": ending,
+           "closure": close,
+           "stems": {k: v for k, v in (("drums", a.drums), ("bass", a.bass)) if v}, "joins": joins}
     if a.out:
         json.dump(out, open(a.out, "w"), indent=1)
 
     mmss = lambda t: f"{int(t // 60)}:{t % 60:05.2f}"
-    print(f"{a.track}: {mmss(dur)}, {bpm:.1f} BPM (bar {240 / bpm:.2f}s), {len(rows)} bars, ending: {ending}")
+    print(f"{a.track}: {mmss(dur)}, {bpm:.1f} BPM (bar {240 / bpm:.2f}s), {len(rows)} bars, ending: {ending} ({close['what']}, {close['strength']:.2f})")
     if not a.bpm:
         print(f"  (half/double tempo would be {bpm / 2:.1f} / {bpm * 2:.1f} - pass --bpm if the metadata says so)")
     print("  section          bars  level  shape    dB")
     for s in sections:
         print(f"  {mmss(s['start'])}-{mmss(s['end'])}  {s['bars']:4d}  {s['level']:5s}  {s['shape']:7s} {s['db']:6.1f}")
     print("  hits (>= +4 dB from the bar before):", ", ".join(mmss(rows[i]["t"]) for i in hits) or "none")
+    if builds:
+        print("  builds into a hit:", ", ".join(f"{mmss(b['start'])} ({b['bars']} bars, +{b['rise_db']:.0f} dB)"
+                                                 for b in builds))
+    if bass_ev:
+        print("  bass:", ", ".join(f"{e['kind']} {mmss(e['t'])}" for e in bass_ev))
+    good = [c for c in joins if c[2] < 0.5]
+    print(f"  joins: {len(good)} near-seamless jumps (cost < 0.5) of {len(joins)} listed"
+          + (f"; stems: {', '.join(k for k in ('drums', 'bass') if getattr(a, k))}" if (a.drums or a.bass) else ""))
 
     if a.png:
         W, H = 1600, 360

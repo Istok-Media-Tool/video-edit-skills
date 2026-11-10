@@ -1,0 +1,16 @@
+{
+ "_doc": "rank_tracks.py: what matters how much when choosing a track (agreed with the user 2026-11-10). Every criterion is measured 0..1, the weights add up to 100, so the score is out of 100. Change the numbers, not the code.",
+ "main_hits": 30,
+ "_main_hits": "the main places (poenta / promena) land on a real event after arranging: per place min(1, event strength / 0.8), averaged",
+ "closure": 25,
+ "_closure": "the track's own ending (track_map closure 0..1): a loud final chord / hit that rings out, not a fade - every video ends on a clear, emphasized closure",
+ "natural": 20,
+ "_natural": "the arrangement sounds like the track: 1 minus penalties for the number of joins (0.03 each, max 0.4), their seam cost (max 0.2), the same event reused for several places (0.05 each, max 0.2) and level jumps across joins (mean dB over 6, /25, max 0.4)",
+ "voice": 10,
+ "_voice": "the music does not fight the voice: onset density under the video, 0.05 -> 1, 0.20 -> 0",
+ "arc": 10,
+ "_arc": "the music rises with the story (louder at the end than at the start): -1..1 mapped to 0..1",
+ "accents": 5,
+ "_accents": "share of the naglasak places on which a beat of the arrangement falls (1 when there are none)",
+ "_excluded": "not scored, listed at the bottom: tracks with vocals (meta \"vocals\": true) and tracks shorter than the video + tail"
+}

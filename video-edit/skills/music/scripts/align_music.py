@@ -160,7 +160,7 @@ def main():
 
     (tot, rep, wasted), s = ranked[0]
     main_acc = [x for x in acc if x["kind"] in ("promena", "poenta")]
-    if main_acc and any(sc < 0.6 for x, sc, *_ in rep if x["kind"] in ("promena", "poenta")):
+    if main_acc and (hits or secs) and any(sc < 0.6 for x, sc, *_ in rep if x["kind"] in ("promena", "poenta")):
         x = main_acc[-1]
         # the track's biggest moment: a hit INTO the loudest music - half the jump
         # plus how loud the 4 bars after it are (a big jump into a quiet part loses)
@@ -184,6 +184,7 @@ def main():
         marks += [{"t": round(t - s, 3), "kind": "section"} for t, _ in secs
                   if 0 <= t - s <= vlen and round(t, 2) not in hit_ts]
         json.dump({"track": M["track"], "start": round(s, 3), "score": round(tot, 2), "vol": 0.35,
+                   "wasted": [round(v, 2) for v in wasted],
                    "marks": sorted(marks, key=lambda m: m["t"]),
                    "accents": [{"word": x["word"], "kind": x["kind"], "t": x["t"], "lands": what,
                                 "error_ms": None if d is None else round(d * 1000)} for x, sc, t, what, d in rep]},
