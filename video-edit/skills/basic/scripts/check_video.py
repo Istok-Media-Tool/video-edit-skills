@@ -58,7 +58,7 @@ def main():
     a = ap.parse_args()
     bad = []
     num, den = probe(["-select_streams", "v:0", "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0",
-                      a.video]).strip().split("/")
+                      a.video]).strip().split(",")[0].split("/")
     fr = int(den) / int(num)
 
     # 1. holes

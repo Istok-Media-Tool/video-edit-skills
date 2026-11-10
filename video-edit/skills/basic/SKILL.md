@@ -42,11 +42,35 @@ now so you have the intended content to compare against. An `.rtf` often
 needs `textutil -convert txt -stdout file.rtf` (macOS) to get clean text
 instead of raw RTF markup.
 
+### Transcription keys (once per machine)
+
+Transcription uses ElevenLabs, then Groq, then local Whisper (`scripts/stt.py`).
+When the user asks to add a key, or a script reports a missing or invalid
+key, open a hidden-input dialog - never ask for the key in chat, never print
+it. ElevenLabs (the real key starts with `sk_`; the key ID shown in the key
+list is not it):
+
+```bash
+K=$(osascript -e 'text returned of (display dialog "Nalepi ElevenLabs API ključ (počinje sa sk_):" default answer "" with hidden answer with title "ElevenLabs ključ" buttons {"Otkaži", "Sačuvaj"} default button "Sačuvaj" giving up after 280)' 2>/dev/null)
+case "$K" in sk_*) mkdir -p ~/.config/elevenlabs && printf '%s' "$K" > ~/.config/elevenlabs/api_key && chmod 600 ~/.config/elevenlabs/api_key && echo saved;; *) echo "not saved: does not start with sk_";; esac; unset K
+```
+
+Groq: the same with `gsk_` and `~/.config/groq/api_key`. Then check it with
+`python3 scripts/stt.py <short clip> --out /tmp/stt_check` - its first word
+names the engine that answered. On Windows use a PowerShell `InputBox`.
+
 ### 2. Get a rough overview with a first-pass transcription
 
 ```bash
-whisper audio.wav --language <lang> --model medium --output_format txt --output_format srt --output_dir .
+python3 scripts/stt.py audio.wav --language <lang> --out overview
 ```
+
+This uses ElevenLabs Scribe v2, and Groq Whisper if ElevenLabs fails (keys in
+`~/.config/elevenlabs/api_key` and `~/.config/groq/api_key`, never printed or
+asked for in chat). Add `--terms "Name1, Name2"` when names or terms keep
+coming out misspelled. Without a key or network, fall back to local Whisper
+and tell the user:
+`whisper audio.wav --language <lang> --model medium --output_format txt --output_format srt --output_dir .`
 
 Use this ONLY to get a sense of overall content and roughly how far along the
 recording different lines are. Do **not** use its segment start/end times as
@@ -72,11 +96,16 @@ expect to fit in it, something is off.
 ### 4. Transcribe each burst in isolation
 
 ```bash
-python3 scripts/transcribe_bursts.py audio.wav bursts.txt --language <lang> --model medium
+python3 scripts/transcribe_bursts.py audio.wav bursts.txt --language <lang>
 ```
 
-This loads the Whisper model once, then transcribes each burst as its own
-short clip with `condition_on_previous_text=False` and `temperature=0`. That
+By default each burst goes to ElevenLabs Scribe v2 as its own request, 4 at
+a time; Groq Whisper takes over if ElevenLabs fails, and local Whisper
+(`--model medium`, loaded once) if neither works. The script says on stderr
+which engine ran - tell the user when it fell back. `--engine local` forces
+local; `--terms` passes names/terms to spell correctly.
+
+Either way it transcribes each burst as its own short clip (locally with `condition_on_previous_text=False` and `temperature=0`). That
 combination is what actually surfaces hidden retakes: a burst that a
 full-file pass labels as one clean line can turn out, once isolated, to
 contain a false start immediately followed by the real delivery - entirely

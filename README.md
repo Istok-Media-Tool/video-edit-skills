@@ -32,21 +32,38 @@ Ručno ažuriranje, kad god hoćeš: `/plugin marketplace update video-edit-skil
 
 | Skill | Šta radi |
 |---|---|
-| `basic` | seče sirov snimak po scenariju (Whisper + detekcija tišine), bira dublove, proverava svaki render (`check_video.py`) |
+| `basic` | seče sirov snimak po scenariju (transkripcija + detekcija tišine), bira dublove, proverava svaki render (`check_video.py`) |
 | `plan-editor` | interaktivni editor u browseru: zum po rečima, ispravka titlova, B-roll, close-up klizači, dublovi jedan pored drugog, naslov |
 | `zoom` | dinamički zum, centriran na lice, bez sečenja predmeta koje pokazuješ |
 | `subtitle` | titlovi (ASS + libass), prelomi gde se prirodno pravi pauza |
 | `title-behind` | veliki naslov iza glave (osoba isečena ispred teksta) |
 | `music` | muzika ispod glasa, posebna pesma po delu videa, TV promena kanala na prelazima |
 | `chapter-cards` | kartice za delove videa, jedan šablon (neon stil 80-ih) sa vremenskom lentom |
+| `scrapbook` | TikTok „scrapbook” oko glave: isečena slova, poruka na papiru, crtež markerom, sve prati glavu kroz zum |
 
 ## Šta treba instalirati
 
 - macOS (praćenje lica koristi Apple Vision)
 - `ffmpeg` i `ffmpeg-full` (titlovi): `brew install ffmpeg ffmpeg-full`
-- [Whisper](https://github.com/openai/whisper): `pip install -U openai-whisper`
 - Python 3 sa `numpy`
-- Za naslov iza glave i kartice: HyperFrames skillovi i CLI (`npx hyperframes`), instaliraju se posebno
+- Za naslov iza glave, kartice i scrapbook: HyperFrames skillovi i CLI (`npx hyperframes`), instaliraju se posebno
+
+## Transkripcija (preporučeno: ElevenLabs ključ)
+
+Skillovi transkribuju govor ovim redom: **ElevenLabs** Scribe v2, pa **Groq** Whisper,
+pa lokalni Whisper. Sa ključem je transkripcija gotova za sekundu-dve umesto za više minuta.
+Dovoljan je jedan od dva ključa, a besplatni planovi su sasvim dovoljni.
+
+1. Napravi ključ:
+   - ElevenLabs: [elevenlabs.io/app/settings/api-keys](https://elevenlabs.io/app/settings/api-keys) → Create API Key,
+     uključi Speech to Text. Kopiraj ključ koji počinje sa `sk_` iz prozora koji iskoči (posle se više ne vidi).
+   - Groq: [console.groq.com/keys](https://console.groq.com/keys) → Create API Key (počinje sa `gsk_`).
+2. Reci Claude-u: **„Otvori mi prozor da unesem ElevenLabs ključ”** (ili Groq ključ).
+   Ključ nalepi u taj prozor, **nikad u chat**. Čuva se samo na tvom računaru
+   (`~/.config/elevenlabs/api_key` ili `~/.config/groq/api_key`).
+
+Bez ključa sve radi i dalje, samo sporije, preko lokalnog
+[Whisper-a](https://github.com/openai/whisper): `pip install -U openai-whisper`.
 
 ## Kako se koristi
 

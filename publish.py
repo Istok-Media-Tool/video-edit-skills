@@ -16,7 +16,7 @@ import json, os, re, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.expanduser("~/.claude/skills")
 DST = os.path.join(HERE, "video-edit", "skills")
-SKILLS = ["basic", "plan-editor", "zoom", "subtitle", "title-behind", "music", "chapter-cards"]
+SKILLS = ["basic", "plan-editor", "zoom", "subtitle", "title-behind", "music", "chapter-cards", "scrapbook"]
 # The personal names live in private_map.py, next to this file and never
 # committed (it would publish the very names it removes).
 sys.path.insert(0, HERE)

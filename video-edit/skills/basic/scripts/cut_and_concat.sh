@@ -59,7 +59,7 @@ CRF="${CRF:-18}"
 FADE_IN="${FADE_IN:-0.005}"
 
 mkdir -p "$WORKDIR/clips"
-FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 "$SRC")
+FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 "$SRC" | head -1 | cut -d, -f1)
 : > "$WORKDIR/concat_list.txt"
 
 i=0
@@ -96,7 +96,7 @@ while read -r _ f; do
   inputs+=(-i "$f")
   # AAC adds up to 1024 samples of padding when decoded; trim to the
   # video's exact length or the concat filter holds frames to cover it
-  vd=$(ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames -of csv=p=0 "$f")
+  vd=$(ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames -of csv=p=0 "$f" | head -1 | cut -d, -f1)
   vd=$(python3 -c "from fractions import Fraction as F; print(float($vd/F('$FPS')))")
   graph+="[$k:v]setpts=PTS-STARTPTS[v$k];[$k:a]atrim=0:$vd,asetpts=PTS-STARTPTS[a$k];"
   k=$((k + 1))
