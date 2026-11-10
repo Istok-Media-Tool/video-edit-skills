@@ -163,8 +163,13 @@ Write the confirmed selections (one `start<TAB>end` pair per line, in output
 order) to a file, then:
 
 ```bash
-scripts/cut_and_concat.sh "<source_video>" selections.txt final_output.mp4
+python3 scripts/guard_word_edges.py audio.wav selections.txt safe.txt --language sr --pre-pad 0.15 --post-pad 0.35
+scripts/cut_and_concat.sh "<source_video>" safe.txt final_output.mp4
 ```
+
+The guard keeps every cut outside words (see "Never cut inside a word"
+under Tight pacing) - run it before every cut, with the pads you cut with.
+For the user's videos, use the Tight pacing commands below instead.
 
 Read the comment block at the top of `cut_and_concat.sh` before running it
 manually or adapting it - it documents gotchas (ffmpeg stealing stdin from a
@@ -195,8 +200,24 @@ so for their videos tighten every cut before assembling:
 
 ```bash
 python3 scripts/tighten_cuts.py audio.wav selections.txt tight.txt --beat 1.0 --tail 2.0
-PRE_PAD=0.04 POST_PAD=0.08 scripts/cut_and_concat.sh "<source_video>" tight.txt final_output.mp4 <abs workdir>
+python3 scripts/guard_word_edges.py audio.wav tight.txt safe.txt --language sr --pre-pad 0.04 --post-pad 0.08
+PRE_PAD=0.04 POST_PAD=0.08 scripts/cut_and_concat.sh "<source_video>" safe.txt final_output.mp4 <abs workdir>
 ```
+
+**Never cut inside a word - every kept word is spoken to its end (the
+user's rule, 2026-11-10).** The -42 dB edges miss quiet word endings (a
+soft final s / t / f, a vowel the speaker lets fade), and checking the
+result by transcribing it does not catch a clipped ending - "kraj" for
+"kraja" is still recognised. So `guard_word_edges.py` runs on EVERY cut,
+right before cutting, with the same pads you cut with: it checks each edge
+against ElevenLabs word times of the source and moves it out so the clip
+ends >= 0.06s after its last word and starts >= 0.04s before its first
+word - without reaching into the neighbouring word (a retake or a dropped
+word right next to it). It prints every move with the word; tell the user
+which edges moved. An edge it reports as `TIGHT` (the next word follows
+with no gap) must be listened to, or cut somewhere else. If you cut with
+other pads (the defaults 0.15 / 0.35, or a per-video change), pass those
+same values as `--pre-pad` / `--post-pad`.
 
 It moves each edge to where speech really starts / ends (-42 dB) and
 splits any internal pause over 0.25s.
