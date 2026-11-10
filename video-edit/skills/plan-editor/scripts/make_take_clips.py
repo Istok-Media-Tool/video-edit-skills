@@ -23,6 +23,9 @@ make_plan_widget.py --takes and the outdir to serve_plan_editor.py --takes-dir.
 Usage:
   make_take_clips.py source.mp4 takes_src.json outdir [--pre-filter transpose=1]
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from venc import venc
 import argparse
 import json
 import subprocess
@@ -47,7 +50,7 @@ def main():
             name = f"clip{int(clip) + 1}_take{k + 1}.mp4"
             s = max(0.0, t["start"] - PRE)
             subprocess.run(["ffmpeg", "-nostdin", "-y", "-ss", f"{s:.3f}", "-to", f"{t['end'] + POST:.3f}",
-                            "-i", a.source, "-vf", vf, "-c:v", "libx264", "-crf", "24", "-preset", "fast",
+                            "-i", a.source, "-vf", vf, *venc(24, "fast"),
                             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
                             str(out / name), "-loglevel", "error"], check=True, stdin=subprocess.DEVNULL)
             t["file"] = name

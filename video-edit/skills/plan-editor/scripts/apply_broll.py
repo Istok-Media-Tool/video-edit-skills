@@ -30,6 +30,9 @@ Usage:
   apply_broll.py zoomed.mp4 out.mp4 --broll broll.json --sentences sentences.txt \
     --words words.json --durations 6.28,6.04,...
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from venc import venc
 import argparse
 import json
 import os
@@ -129,7 +132,7 @@ def main():
         cur = nxt
     cmd = (["ffmpeg", "-nostdin", "-y", "-i", a.video] + inputs +
            ["-filter_complex", ";".join(chains), "-map", f"[{cur}]", "-map", "0:a?",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+            *venc(18), "-pix_fmt", "yuv420p",
             "-c:a", "copy", a.out, "-loglevel", "error"])
     subprocess.run(cmd, check=True, stdin=subprocess.DEVNULL)
     print(f"-> {a.out}", file=sys.stderr)

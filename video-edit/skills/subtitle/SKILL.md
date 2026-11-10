@@ -207,7 +207,7 @@ would otherwise waste minutes reproducing.
 
 ```bash
 /opt/homebrew/opt/ffmpeg-full/bin/ffmpeg -nostdin -y -i video.mp4 \
-  -vf "subtitles=captions.ass" -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p \
+  -vf "subtitles=captions.ass" -c:v h264_videotoolbox -q:v 75 -pix_fmt yuv420p \
   -c:a copy output_titlovi.mp4 -loglevel error
 ```
 
@@ -217,8 +217,12 @@ compressed copy rather than compressing the master - same pattern as the
 **basic** and **zoom** skills:
 
 ```bash
-ffmpeg -nostdin -y -i output_titlovi.mp4 -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a aac -b:a 128k output_titlovi_share.mp4 -loglevel error
+ffmpeg -nostdin -y -i output_titlovi.mp4 -c:v h264_videotoolbox -q:v 65 -pix_fmt yuv420p -c:a aac -b:a 128k output_titlovi_share.mp4 -loglevel error
 ```
+
+(Apple VideoToolbox - ~4x faster than libx264 on an M-series Mac, same quality as
+`-c:v libx264 -preset slow -crf 24`, which is the fallback when `h264_videotoolbox` is missing
+and gives a ~40% smaller file when size matters more than time.)
 
 ## Iterating on feedback
 

@@ -39,7 +39,7 @@ A short request ("500 iza glave, ispod 'Engleskih reči za 30 sekundi'
 3. **Cutout of the speaker** from the video WITHOUT captions (the zoom
    render), frame-identical to the bg, title length only:
    ```bash
-   ffmpeg -nostdin -y -i zoom.mp4 -t <first cut> -an -c:v libx264 -crf 14 assets/title_src.mp4
+   ffmpeg -nostdin -y -i zoom.mp4 -t <first cut> -an -c:v h264_videotoolbox -q:v 85 assets/title_src.mp4
    npx hyperframes remove-background assets/title_src.mp4 -o assets/cut.webm --quality best
    ```
    `--quality best` so the cutout's colours match the bg (no visible edge).

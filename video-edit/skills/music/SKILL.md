@@ -127,8 +127,12 @@ make a secondary compressed copy for any tool with a file-size limit
 rather than compressing the master:
 
 ```bash
-ffmpeg -nostdin -y -i output.mp4 -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a aac -b:a 128k output_share.mp4 -loglevel error
+ffmpeg -nostdin -y -i output.mp4 -c:v h264_videotoolbox -q:v 65 -pix_fmt yuv420p -c:a aac -b:a 128k output_share.mp4 -loglevel error
 ```
+
+(Apple VideoToolbox - ~4x faster than libx264 on an M-series Mac, same quality as
+`-c:v libx264 -preset slow -crf 24`, which is the fallback when `h264_videotoolbox` is missing
+and gives a ~40% smaller file when size matters more than time.)
 
 ## Different track per section (era / chapter) - decades reel, 2026-11-05
 

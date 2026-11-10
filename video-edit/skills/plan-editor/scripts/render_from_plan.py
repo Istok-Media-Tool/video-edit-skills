@@ -30,6 +30,9 @@ project.json (paths relative to the json file):
 Usage:
   render_from_plan.py project.json plan_reply.txt workdir out.mp4
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from venc import venc
 import json
 import os
 import re
@@ -204,8 +207,7 @@ def main():
             m = re.search(r"title ([\d.]+)s -> ([\d.]+)s", tr)
             if m:
                 checks += [float(m.group(1)) + 0.3, float(m.group(2)) - 0.3]
-        run([FFMPEG_FULL, "-nostdin", "-y", "-i", video, "-vf", f"subtitles={ass}", "-c:v", "libx264",
-             "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "copy", out, "-loglevel", "error"])
+        run([FFMPEG_FULL, "-nostdin", "-y", "-i", video, "-vf", f"subtitles={ass}", *venc(18), "-pix_fmt", "yuv420p", "-c:a", "copy", out, "-loglevel", "error"])
     else:
         run(["cp", video, out])
 

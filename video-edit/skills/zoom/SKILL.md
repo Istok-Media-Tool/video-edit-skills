@@ -200,8 +200,12 @@ If the master output exceeds a tool's file-size limit, make a secondary
 compressed copy rather than compressing the master:
 
 ```bash
-ffmpeg -nostdin -y -i final_output.mp4 -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a aac -b:a 128k final_output_share.mp4 -loglevel error
+ffmpeg -nostdin -y -i final_output.mp4 -c:v h264_videotoolbox -q:v 65 -pix_fmt yuv420p -c:a aac -b:a 128k final_output_share.mp4 -loglevel error
 ```
+
+(Apple VideoToolbox - ~4x faster than libx264 on an M-series Mac, same quality as
+`-c:v libx264 -preset slow -crf 24`, which is the fallback when `h264_videotoolbox` is missing
+and gives a ~40% smaller file when size matters more than time.)
 
 ## Objects the speaker shows must stay whole in every zoom
 

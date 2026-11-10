@@ -1,5 +1,8 @@
 # TV channel-change effect on the era cuts: the old picture loses vertical
 # hold and tears, turns into static on the cut, the new channel settles in.
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from venc import venc
 import subprocess, sys, numpy as np
 SRC, OUT = sys.argv[1], sys.argv[2]
 W, H, FPS = 1080, 1920, 25
@@ -41,7 +44,7 @@ for j, b in enumerate(B):
     fr = np.frombuffer(raw, np.uint8).reshape(-1, H, W, 3)
     out = b"".join(fx(fr[i], ENV[i], j * 100 + i).tobytes() for i in range(len(ENV)))
     subprocess.run(["ffmpeg", "-nostdin", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-                    "-c:v", "libx264", "-crf", "12", "-pix_fmt", "yuv420p", f"tv_{j}.mp4", "-loglevel", "error"], input=out, check=True)
+                    *venc(12), "-pix_fmt", "yuv420p", f"tv_{j}.mp4", "-loglevel", "error"], input=out, check=True)
     print(f"cut {b:.2f}: frames {s}-{s+len(ENV)-1}")
 args = ["ffmpeg", "-nostdin", "-y", "-i", SRC]; fc = []; last = "0:v"
 for j, s in enumerate(starts):
@@ -49,6 +52,5 @@ for j, s in enumerate(starts):
     fc.append(f"[{j+1}:v]setpts=PTS-STARTPTS+{s}/{FPS}/TB[t{j}]")
     fc.append(f"[{last}][t{j}]overlay=eof_action=pass[o{j}]"); last = f"o{j}"
 open("fx_v15.txt", "w").write("".join(f"{s/FPS:.2f} {(s+len(ENV))/FPS:.2f}\n" for s in starts))
-args += ["-filter_complex", ";".join(fc), "-map", f"[{last}]", "-map", "0:a", "-c:v", "libx264", "-preset", "medium",
-         "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "copy", OUT, "-loglevel", "error"]
+args += ["-filter_complex", ";".join(fc), "-map", f"[{last}]", "-map", "0:a", *venc(18), "-pix_fmt", "yuv420p", "-c:a", "copy", OUT, "-loglevel", "error"]
 subprocess.run(args, check=True)

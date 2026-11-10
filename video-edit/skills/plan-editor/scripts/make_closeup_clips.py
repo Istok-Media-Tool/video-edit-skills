@@ -25,6 +25,9 @@ serve_plan_editor.py --closeups-dir.
 Usage:
   make_closeup_clips.py closeups.txt srcdir outdir [--pre-filter transpose=1] [--ext .MP4]
 """
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from venc import venc
 import argparse
 import json
 import subprocess
@@ -59,7 +62,7 @@ def main():
         s1 = min(total, off + (en - st) + SLACK)
         f = f"cu{k + 1}.mp4"
         subprocess.run(["ffmpeg", "-nostdin", "-y", "-ss", f"{s0:.3f}", "-to", f"{s1:.3f}", "-i", str(src), "-vf", vf,
-                        "-an", "-c:v", "libx264", "-crf", "26", "-preset", "fast", "-pix_fmt", "yuv420p",
+                        "-an", *venc(26, "fast"), "-pix_fmt", "yuv420p",
                         "-movflags", "+faststart", str(out / f), "-loglevel", "error"], check=True, stdin=subprocess.DEVNULL)
         res.append({"name": name, "st": st, "en": en, "off": off, "file": f, "o": round(off - s0, 3),
                     "min": round(st - (off - s0), 3), "max": round(st + (s1 - off), 3)})
