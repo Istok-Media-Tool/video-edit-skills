@@ -281,6 +281,41 @@ per-segment filter chains from the zoom skill straight into
 Rotation to vertical, if needed, is handled separately (not part of either
 skill) - ask the user, since it's not always wanted.
 
+## Instagram safe zone - for every title, graphic and caption
+
+Instagram Reels draws its own UI over the video. Anything important under
+it is unreadable: titles, words, logos, the product, doodles that carry a
+joke. On a 1080x1920 frame:
+
+- **Top - nothing above y = 260.** The "Reels / Friends" header and the
+  status bar cover roughly the first 210-250 px.
+- **Bottom - nothing below y = 1330.** From about y = 1380 down sit the
+  avatars of friends who liked or reposted, then the username + Follow,
+  the description and the progress bar.
+- **Right - nothing in the button rail.** Like, comment, repost, send,
+  save and the menu stack down the right side from about y = 950 to 1660,
+  over x > ~860. Keep that block clear.
+- **Sides - at least 120 px in from the left and right edge.** Tall phones
+  fill the screen height and crop about 100 px off each side of a 9:16
+  video, so anything closer to an edge gets cut or ends up jammed against
+  it. Nothing may touch or hug an edge.
+
+So every important element sits inside x 120-960, y 260-1330, and out of
+the rail block (x > 860, y 950-1660). Below, above and beside that, only
+decoration or texture that can be hidden.
+
+Users caught every one of these on a real reel: a big opening title at
+y 1300-1750 sat under the description, a halo and devil horns over the
+speaker's head at y 75-230 sat under the "Reels / Friends" header, and a
+"?" at x 1030 was jammed against the right edge. When a doodle belongs
+above a head that sits too high in the frame, re-crop that shot from the
+source with more headroom (move the person down) instead of letting the
+doodle leave the safe zone.
+
+Before showing frames for approval, draw the guide lines on a test frame
+(y 260 and 1330, x 120 and 960, plus the rail block) and check the
+bounding box of every graphic against them. Move it in if it crosses.
+
 ## Platform notes
 
 - macOS has no GNU `timeout` by default - don't wrap ffmpeg calls in one;
