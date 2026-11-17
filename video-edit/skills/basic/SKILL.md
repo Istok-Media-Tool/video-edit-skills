@@ -368,6 +368,36 @@ Before showing frames for approval, draw the guide lines on a test frame
 (y 260 and 1330, x 150 and 930, plus the rail block) and check the
 bounding box of every graphic against them. Move it in if it crosses.
 
+## Line breaks - every piece of text on screen
+
+Every line break in text the viewer reads - captions, titles, lists,
+lower thirds, slides, carousels, cover text - must fall where a reader
+would pause, the way lines are broken in a poem. Never let automatic
+word-wrap decide it. The user rejects text broken mid-phrase on sight:
+"Ceo proces je u modulu AI / montaža, uz dodatak Istok Skill za /
+Claude na poklon" is wrong; "Ceo proces je u modulu AI montaža, / uz
+dodatak Istok Skill za Claude / na poklon." is right.
+
+- **Break after punctuation** (comma, period, colon, dash) whenever
+  there is one near the line's end.
+- **Keep units together on one line:** a name ("AI montaža",
+  "Istok Skill", "Claude Code"), a number with what it counts ("50 random
+  klipova", "3000 italijanskih reči"), an adjective with its noun
+  ("zanimljivih klipova"), a short quote ("„u kolicima na aerodromu”").
+- **A short word never ends a line.** Prepositions, conjunctions and
+  particles (u, na, za, sa, o, i, a, kao, da, je, the, a, of, to, in,
+  and) move down to start the next line with the word they belong to:
+  "Reklama / za zaštitno staklo", not "Reklama za / zaštitno staklo".
+- **No orphans:** one short word alone on the last line is wrong;
+  re-break so the lines are closer in length.
+- If no logical break fits the width, shorten or reword the text, or
+  shrink the size slightly - never accept a bad break.
+
+How to apply: put the breaks in by hand (a `|` or `\n` marker in the
+text) instead of greedy wrapping, then read every line of the rendered
+frame on its own before showing it. For captions this applies to how a
+phrase splits across its two lines, too.
+
 ## Shared scripts - one copy, here
 
 `stt.py`, `groq_stt.py`, `cut_and_concat.sh` and `venc.py` live ONLY in
