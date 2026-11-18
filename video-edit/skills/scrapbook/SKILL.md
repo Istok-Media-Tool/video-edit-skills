@@ -29,6 +29,6 @@ constellation, never random - only the text changes per part.
    close-ups/title); median-5 + mean-3 smoothing that never crosses a
    cut-list join, so the stickers jump with the head on a zoom change.
 3. `gen_scrap.py` (edit ERA texts) in a HyperFrames project whose bg is
-   the finished video part (`-crf 12 -g 25`), snapshot a proposal sheet,
+   the finished video part (`-c:v h264_videotoolbox -q:v 85 -g 25`), snapshot a proposal sheet,
    then render / concat / check_video (stretch edges in `--edges`, fx
    windows in `--fx`) like the chapter-cards skill.

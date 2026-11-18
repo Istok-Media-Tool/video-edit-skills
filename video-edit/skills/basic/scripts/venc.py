@@ -1,12 +1,15 @@
 """
-Video encoder arguments for ffmpeg: Apple VideoToolbox when this Mac has it,
-libx264 otherwise.
+Video encoder arguments for ffmpeg: ALWAYS Apple VideoToolbox (the user's rule,
+2026-11-15: "za apsolutno sve ... uvek"). libx264 only on a machine without it
+(Intel, Windows, Linux) - never by choice on this Mac.
 
 VideoToolbox (h264_videotoolbox) runs on the M-series media engine: on a real
 reel it encoded ~4x faster than libx264 -preset medium (3 s vs 13 s for 30 s
 of 1080x1920). Its -q:v values below were picked to match libx264's SSIM at
-the same CRF (CRF 18 -> q 75, 24 -> 65, 14 -> 85). Set VENC=x264 to force
-libx264, e.g. when a file must be as small as possible.
+the same CRF (CRF 18 -> q 75, 24 -> 65, 14 -> 85). On REKLAMA 1 (164 s,
+1080x1920, graphics overlay) q 75 took 14 s vs ~2 min for libx264 -preset slow
+-crf 15, SSIM 0.996 between the two, and check_video passed on the near-still
+tail. VENC=x264 exists only for debugging; don't use it for delivery.
 
     from venc import venc
     cmd = ["ffmpeg", ..., *venc(18), "-pix_fmt", "yuv420p", out]

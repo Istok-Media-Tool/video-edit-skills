@@ -51,6 +51,8 @@
 .now{display:flex;align-items:baseline;gap:10px;font-variant-numeric:tabular-nums}
 .now b{font-size:17px;font-weight:600}
 .now span{font-size:13px;color:var(--text-muted)}
+.all-play{display:flex;gap:6px;margin:8px 0 4px}
+.all-play button{height:30px;padding:0 10px;font-size:13px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--text-secondary)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{display:inline-block;width:16px;height:12px;border-radius:3px}
@@ -71,6 +73,21 @@
 .tk button{justify-self:start;height:28px}
 .tk figure.on button{color:var(--text-success);border-color:var(--border-success,#3b9b3b)}
 #cuv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;background:#000;display:none;pointer-events:none}
+.wd{display:grid;gap:8px;padding:10px 0 12px;border-bottom:0.5px solid var(--border-strong)}
+.wd.ch{border-left:3px solid var(--border-accent);padding-left:10px}
+.wd .ps .lg{width:110px}
+.wdw{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:4px}
+.wdbig{width:200px;aspect-ratio:9/16;border-radius:8px;background-color:#000;background-repeat:no-repeat;flex:none}
+.wdt{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;flex:1;min-width:220px}
+.wdf{position:relative;padding:0;border:1.5px solid transparent;border-radius:6px;overflow:hidden;background:#000;height:auto;line-height:0}
+.wdf.sel{border-color:var(--border-accent)}
+.wdf img{width:100%;display:block}
+.wdr{position:absolute;outline:2px solid #fff;box-shadow:0 0 0 999px rgba(0,0,0,.55);pointer-events:none}
+.zcc{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.zcc .wdbig{width:150px}
+.zcc .wdf{width:150px;flex:none}
+.zcs{display:grid;gap:6px;flex:1;min-width:240px}
+.wdf span{position:absolute;left:4px;top:4px;font-size:11px;line-height:1.2;background:rgba(0,0,0,.6);color:#fff;padding:1px 4px;border-radius:4px}
 .cu{padding:12px 0;border-bottom:0.5px solid var(--border);display:grid;gap:8px}
 .cu.ch{border-left:3px solid var(--border-accent);padding-left:10px}
 .cuh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -93,6 +110,8 @@
 </style>
 <div class="modes" role="group" aria-label="Šta radiš">
 <label class="opt"><input type="checkbox" id="zoom"><i class="ti ti-zoom-in" aria-hidden="true"></i>Zum</label>
+<label class="opt" id="wideopt"><input type="checkbox" id="wide"><i class="ti ti-crop" aria-hidden="true"></i>Kadar 1,0×</label>
+<label class="opt" id="zcopt"><input type="checkbox" id="zc"><i class="ti ti-zoom-in" aria-hidden="true"></i>Zum kadrovi</label>
 <label class="opt"><input type="checkbox" id="edit"><i class="ti ti-pencil" aria-hidden="true"></i>Izmeni tekst</label>
 <label class="opt"><input type="checkbox" id="broll"><i class="ti ti-photo-video" aria-hidden="true"></i>B-roll</label>
 <label class="opt" id="posopt"><input type="checkbox" id="pos"><i class="ti ti-arrows-vertical" aria-hidden="true"></i>Pozicija titla</label>
@@ -104,6 +123,7 @@
 <div id="help" style="margin-bottom:12px"></div>
 <div id="pvw" style="display:none"><div id="pvbox"><video id="pv" playsinline preload="auto"></video><video id="cuv" muted playsinline preload="auto"></video><div id="ov"></div><div id="ovt"></div><audio id="mu" preload="auto"></audio></div>
 <div id="side"><div class="now"><b id="nowc">Rečenica 1</b><span id="nowt">0:00 / 0:00</span></div>
+<div class="all-play"><button id="allp"><i class="ti ti-player-play" aria-hidden="true"></i> Pusti ceo video</button><button id="allr" title="Od početka"><i class="ti ti-player-skip-back" aria-hidden="true"></i> Od početka</button></div>
 <div class="legend"><span><i class="lz"></i>zum</span><span><i class="lb"></i>B-roll</span><span><i class="lt"></i>naslov</span><span><i class="la"></i>muzički akcenat</span></div>
 <button id="mub" style="display:none"></button><div id="mus" role="group" aria-label="Izbor pesme"></div><div id="musi"></div>
 <div class="lg">▶ pored broja pušta celu rečenicu. Kad nijedan mod nije uključen, klik na reč pušta snimak od te reči.</div></div></div>
@@ -124,13 +144,20 @@ const POS0=__POS__;
 const TK=__TAKES__;
 const TI0=__TITLE__;
 const CU0=__CLOSEUPS__;
+// one fixed "1,0x" frame for the whole video: {W, H, crop: {x, y, w, h}, frames: [{clip, img}]}
+const WD0=__WIDE__;
+const ZC0=__ZCROPS__;
+let ZC=null;
+let WD=null,WSEL=0;
 const A0=__ACCENTS__;
 // one aligned track, or a ranked list (rank_tracks.py) the user switches between with A / B / C
 const MUS=(m=>m?(Array.isArray(m)?m:[m]):[])(__MUSIC__);let MU=MUS[0]||null,MUK=0;
 const AK=["poenta","naglasak","promena"],AKL={poenta:"poenta",naglasak:"naglasak",promena:"promena"};
 const HM="Muzika: klikni reč na kojoj muzika treba da udari. 1× poenta (najjači udarac pesme), 2× naglasak (jak takt), 3× promena (pesma prelazi u novi deo), 4× ukloni. Najjači udarci pesme čuvaju se za ova mesta."+(MU?" Sive ♪ pokazuju gde udarci izabrane pesme sada padaju (♩ nov deo pesme, ✂ spoj u aranžmanu - preslušaj ga)"+(MUS.length>1?"; dugmad A, B, C… pored videa menjaju pesmu (poređane po tome koliko mesta pogađaju), svaka svira od svog najboljeg početka":"")+"; muziku u pregledu pališ i gasiš dugmetom pored videa.":"");
 const L=["1,0×","1,5×","1,7×","2,0×","2,2×"];
-const HN="Izaberi gore šta radiš: Zum, Izmeni tekst, B-roll, Pozicija titla, Naslov, Close-up, Dublovi ili Muzika.";
+const HN="Izaberi gore šta radiš: Zum, Kadar 1,0×, Izmeni tekst, B-roll, Pozicija titla, Naslov, Close-up, Dublovi ili Muzika.";
+const HZ="Zum kadrovi: svaki zum kadar ima svoj okvir. Klizačima ga pomeri levo–desno, gore–dole i promeni veličinu (‹ › = mali korak); levo vidiš kadar kako ga gleda publika, desno ceo izvorni kadar sa okvirom. Pazi da glava ima prostora iznad, a da telefon u ruci ne dodiruje ivicu.";
+const HW="Kadar 1,0×: jedan isti široki kadar za ceo video. Klizačima pomeri okvir levo–desno, gore–dole i promeni širinu (‹ › = mali korak). Okvir je isti na svim kadrovima desno; klik na kadar ga prikaže levo onako kako ga gleda publika.";
 const HC="Close-up: pomeri klizač Početak ili Kraj (‹ › = jedan frejm). Ispod piše na kojoj reči close-up tada počinje ili prestaje; blizu kraja titla ili rečenice klizač se sam zalepi za nju. ▶ pored reda pušta baš taj prelaz, „Pogledaj“ ceo close-up.";
 const FR=0.04;
 const HT="Naslov: upiši tekst naslova (novi red = novi red na ekranu), pa klikni reč od koje naslov počinje i reč do koje traje. Pregled na videu pokazuje gde stoji.";
@@ -143,7 +170,7 @@ const ORIG=S0.map((s,i)=>(C[i]&&C[i].length)?C[i].map(x=>x[1]):[s]);
 let T,P,B,Y,K,TI,U,A,PEND,MODE="none",BAD={};
 const CAPS=[];C.forEach((c,i)=>(c||[]).forEach((x,k)=>CAPS.push({i,k,idx:x[0],st:x[2],en:x[3],y0:x[4]||0})));
 const defY=()=>CS?CS.y:0;
-function init(){T=ORIG.map(a=>a.slice());P=JSON.parse(JSON.stringify(P0));B=JSON.parse(JSON.stringify(B0));Y={};CAPS.forEach(c=>{if(c.y0)Y[c.idx]=c.y0});Object.entries(POS0).forEach(([k,v])=>{Y[k]=v});TI=TI0?{text:TI0.text,a:TI0.a.slice(),b:TI0.b.slice()}:{text:"",a:null,b:null};K={};Object.entries(TK).forEach(([i,v])=>{K[i]=v.current});U=CU0.map(c=>({st:c.st,en:c.en}));A=S0.map(()=>({}));A0.forEach(x=>{A[x.at[0]][x.at[1]]=x.kind});PEND=null;BAD={}}
+function init(){T=ORIG.map(a=>a.slice());P=JSON.parse(JSON.stringify(P0));B=JSON.parse(JSON.stringify(B0));Y={};CAPS.forEach(c=>{if(c.y0)Y[c.idx]=c.y0});Object.entries(POS0).forEach(([k,v])=>{Y[k]=v});TI=TI0?{text:TI0.text,a:TI0.a.slice(),b:TI0.b.slice(),y:TI0.st.y}:{text:"",a:null,b:null,y:230};K={};Object.entries(TK).forEach(([i,v])=>{K[i]=v.current});U=CU0.map(c=>({st:c.st,en:c.en}));A=S0.map(()=>({}));A0.forEach(x=>{A[x.at[0]][x.at[1]]=x.kind});PEND=null;BAD={};WD=WD0?Object.assign({},WD0.crop):null;ZC=ZC0?ZC0.items.map(z=>Object.assign({},z.crop)):null}
 init();
 const words=i=>T[i].join(" ").split(/\s+/).filter(Boolean);
 const nw=w=>w.toLowerCase().replace(/[^\p{L}\p{N}]/gu,"");
@@ -169,6 +196,14 @@ function now(){if(!M)return;const t=pv.currentTime,k=M.clips.findIndex(c=>c[0]<=
 if(M){document.getElementById("pvw").style.display="flex";pv.src=M.src;document.getElementById("side").prepend(document.getElementById("help"));document.getElementById("help").style.margin="0";
  pv.ontimeupdate=()=>{ovl();if(STOP!==null&&pv.currentTime>=STOP){pv.pause();STOP=null;PLAYING=-1;draw()}};
  pv.onseeked=ovl;pv.onloadedmetadata=ovl;window.addEventListener("resize",ovl)}
+// whole-video playback (no stop point), from where the player is, or from the start
+const allp=document.getElementById("allp");
+function allLbl(){allp.innerHTML=(pv.paused||STOP!==null)?'<i class="ti ti-player-play" aria-hidden="true"></i> Pusti ceo video':'<i class="ti ti-player-pause" aria-hidden="true"></i> Pauza'}
+if(M){pv.addEventListener("play",allLbl);pv.addEventListener("pause",allLbl);
+ allp.onclick=()=>{if(!pv.paused&&STOP===null){pv.pause();return}
+  STOP=null;PLAYING=-1;if(pv.ended||pv.currentTime>=pv.duration-0.05)pv.currentTime=0;pv.play();draw();allLbl()};
+ document.getElementById("allr").onclick=()=>{STOP=null;PLAYING=-1;pv.currentTime=0;pv.play();draw();allLbl()}}
+else document.querySelector(".all-play").style.display="none"
 function wt(i,j,end){
  // time of word j of clip i in the render: its start, or (end) the next word's start / clip end
  if(!M)return null;const w=M.words[i]||[];
@@ -179,9 +214,9 @@ function ovlT(){
  if(!M||!TI.text.trim()||!TI.a||!TI.b)return;
  const t=pv.currentTime;if(t<wt(TI.a[0],TI.a[1])||t>=wt(TI.b[0],TI.b[1],1))return;
  const st=(TI0&&TI0.st)||{fs:92,y:230,box:22,H:CS?CS.H:1920};const sc=pv.clientHeight/(st.H||1920);
- o.style.top=((st.y-st.box)*sc)+"px";o.style.fontSize=(st.fs*sc)+"px";
+ o.style.top=(((TI.y||st.y)-st.box)*sc)+"px";o.style.fontSize=(st.fs*sc)+"px";
  TI.text.split("\n").forEach(l=>{const d=document.createElement("div");const sp=document.createElement("span");
-  sp.style.padding=(st.box*sc*0.5)+"px "+(st.box*sc)+"px";sp.textContent=l;d.appendChild(sp);o.appendChild(d)})}
+  sp.style.padding=(st.box*sc*0.5)+"px "+(st.box*sc)+"px";if(st.bg)sp.style.background=st.bg;sp.textContent=l;d.appendChild(sp);o.appendChild(d)})}
 function ovl(){ovlT();now();
  const o=document.getElementById("ov");if(!M||!CS){o.innerHTML="";return}
  const t=pv.currentTime,c=CAPS.find(c=>c.st!=null&&c.st<=t&&t<c.en);
@@ -215,7 +250,87 @@ function showCap(c){if(!M)return;if(!(pv.currentTime>=c.st&&pv.currentTime<c.en)
 function play(i,t){
  if(t===undefined&&PLAYING===i&&!pv.paused){pv.pause();STOP=null;PLAYING=-1;draw();return}
  pv.currentTime=t===undefined?M.clips[i][0]:t;STOP=M.clips[i][1];PLAYING=i;pv.play();draw()}
-function setMode(m){MODE=m;document.getElementById("title").checked=m==="title";document.getElementById("takes").checked=m==="takes";document.getElementById("pos").checked=m==="pos";document.getElementById("pvw").classList.toggle("big",m==="pos");document.getElementById("zoom").checked=m==="zoom";document.getElementById("edit").checked=m==="edit";document.getElementById("broll").checked=m==="broll";document.getElementById("cu").checked=m==="cu";document.getElementById("music").checked=m==="music";PEND=null;draw()}
+function setMode(m){MODE=m;document.getElementById("title").checked=m==="title";document.getElementById("takes").checked=m==="takes";document.getElementById("pos").checked=m==="pos";document.getElementById("pvw").classList.toggle("big",m==="pos");document.getElementById("zoom").checked=m==="zoom";document.getElementById("edit").checked=m==="edit";document.getElementById("broll").checked=m==="broll";document.getElementById("cu").checked=m==="cu";document.getElementById("music").checked=m==="music";document.getElementById("wide").checked=m==="wide";document.getElementById("zc").checked=m==="zc";PEND=null;draw()}
+function wideFix(){const W=WD0.W,H=WD0.H;
+ WD.w=Math.max(Math.round(W/2.4/2)*2,Math.min(W,Math.round(WD.w/2)*2));WD.h=Math.round(WD.w*16/9/2)*2;
+ if(WD.h>H){WD.h=H;WD.w=Math.round(H*9/16/2)*2}
+ WD.x=Math.max(0,Math.min(W-WD.w,Math.round(WD.x/2)*2));WD.y=Math.max(0,Math.min(H-WD.h,Math.round(WD.y/2)*2))}
+function widePanel(el){
+ const W=WD0.W,H=WD0.H;
+ const box=document.createElement("div");box.className="wd";
+ const info=document.createElement("div");info.className="lg";
+ const wrap=document.createElement("div");wrap.className="wdw";
+ const big=document.createElement("div");big.className="wdbig";big.setAttribute("role","img");big.setAttribute("aria-label","Kadar 1,0× kako ga vidi publika");
+ const tiles=document.createElement("div");tiles.className="wdt";
+ const rows=[{t:"Levo–desno",k:"x",st:2,r:()=>[0,W-WD.w]},{t:"Gore–dole",k:"y",st:2,r:()=>[0,H-WD.h]},{t:"Širina kadra",k:"w",st:4,r:()=>[Math.round(W/2.4/2)*2,Math.min(W,Math.round(H*9/16/2)*2)]}];
+ const upd=()=>{wideFix();
+  info.textContent="Širina "+WD.w+" px ("+(H/WD.h).toFixed(2).replace(".",",")+"× izvora) · levo "+WD.x+" · gore "+WD.y;
+  tiles.querySelectorAll(".wdf").forEach(f=>{const r=f.querySelector(".wdr"),q=f.clientWidth/W;
+   r.style.left=WD.x*q+"px";r.style.top=WD.y*q+"px";r.style.width=WD.w*q+"px";r.style.height=WD.h*q+"px"});
+  const fr=WD0.frames[WSEL],q=(big.clientWidth||200)/WD.w;
+  big.style.backgroundImage="url("+fr.img+")";big.style.backgroundSize=(W*q)+"px "+(H*q)+"px";big.style.backgroundPosition=(-WD.x*q)+"px "+(-WD.y*q)+"px";
+  rows.forEach(r=>{const [a,b]=r.r();r.inp.min=a;r.inp.max=b;r.inp.value=WD[r.k]});
+  box.classList.toggle("ch",["x","y","w"].some(k=>WD[k]!==WD0.crop[k]))};
+ rows.forEach(r=>{const d=document.createElement("div");d.className="ps";
+  const lb=document.createElement("span");lb.className="lg";lb.textContent=r.t;
+  const m=document.createElement("button");m.textContent="‹";m.setAttribute("aria-label",r.t+" manje");
+  const p=document.createElement("button");p.textContent="›";p.setAttribute("aria-label",r.t+" više");
+  const inp=document.createElement("input");inp.type="range";inp.step=r.st;inp.setAttribute("aria-label",r.t);r.inp=inp;
+  // width changes keep the frame's centre and its top edge
+  const setv=v=>{if(r.k==="w"){const cx=WD.x+WD.w/2;WD.w=v;wideFix();WD.x=cx-WD.w/2}else WD[r.k]=v;upd()};
+  inp.oninput=()=>setv(+inp.value);m.onclick=()=>setv(WD[r.k]-r.st);p.onclick=()=>setv(WD[r.k]+r.st);
+  d.append(lb,m,inp,p);box.appendChild(d)});
+ const rs=document.createElement("button");rs.textContent="↺ Vrati predlog";rs.style.justifySelf="start";
+ rs.onclick=()=>{WD=Object.assign({},WD0.crop);upd()};
+ WD0.frames.forEach((fr,k)=>{const f=document.createElement("button");f.className="wdf"+(k===WSEL?" sel":"");
+  f.setAttribute("aria-label","Prikaži kadar iz rečenice "+fr.clip);
+  const im=document.createElement("img");im.src=fr.img;im.alt="";im.onload=upd;
+  const r=document.createElement("div");r.className="wdr";const c=document.createElement("span");c.textContent=fr.clip+".";
+  f.append(im,r,c);f.onclick=()=>{WSEL=k;tiles.querySelectorAll(".wdf").forEach((x,j)=>x.classList.toggle("sel",j===k));upd()};
+  tiles.appendChild(f)});
+ wrap.append(big,tiles);box.append(info,wrap,rs);box.insertBefore(info,box.firstChild);el.appendChild(box);
+ window.addEventListener("resize",()=>{if(MODE==="wide")upd()});requestAnimationFrame(upd)}
+function zcFix(c){const W=ZC0.W,H=ZC0.H;
+ c.w=Math.max(Math.round(W/3/2)*2,Math.min(W,Math.round(c.w/2)*2));c.h=Math.round(c.w*16/9/2)*2;
+ if(c.h>H){c.h=H;c.w=Math.round(H*9/16/2)*2}
+ c.x=Math.max(0,Math.min(W-c.w,Math.round(c.x/2)*2));c.y=Math.max(0,Math.min(H-c.h,Math.round(c.y/2)*2))}
+function zcPanel(el){
+ const W=ZC0.W,H=ZC0.H;
+ ZC0.items.forEach((z,n)=>{const c=ZC[n];
+  const box=document.createElement("div");box.className="wd";
+  const hd=document.createElement("div");hd.className="ps";
+  const ks=Object.keys((P[z.clip-1]||{}).m||{}).map(Number).sort((a,b)=>a-b);
+  const wd=z.seg>0&&ks[z.seg-1]!=null?(T[z.clip-1]||[]).join(" ").split(/\s+/).filter(Boolean)[ks[z.seg-1]]:null;
+  const tt=document.createElement("b");tt.textContent="Rečenica "+z.clip+" · "+z.zoom+(wd?" od reči „"+wd.replace(/[.,!?…]+$/,"")+"“":"");
+  const pl=document.createElement("button");pl.textContent="▶";pl.setAttribute("aria-label","Pusti rečenicu "+z.clip);pl.onclick=()=>play(z.clip-1);
+  const info=document.createElement("span");info.className="lg";info.style.width="auto";
+  hd.append(pl,tt,info);
+  const wrap=document.createElement("div");wrap.className="zcc";
+  const big=document.createElement("div");big.className="wdbig";big.setAttribute("role","img");big.setAttribute("aria-label","Zum kadar kako ga vidi publika");
+  const f=document.createElement("div");f.className="wdf";
+  const im=document.createElement("img");im.src=z.img;im.alt="";
+  const r=document.createElement("div");r.className="wdr";f.append(im,r);
+  const sl=document.createElement("div");sl.className="zcs";
+  const rows=[{t:"Levo–desno",k:"x",st:2,r:()=>[0,W-c.w]},{t:"Gore–dole",k:"y",st:2,r:()=>[0,H-c.h]},{t:"Veličina okvira",k:"w",st:4,r:()=>[Math.round(W/3/2)*2,W]}];
+  const upd=()=>{zcFix(c);
+   info.textContent=(H/c.h).toFixed(2).replace(".",",")+"× izvora · levo "+c.x+" · gore "+c.y;
+   const q=f.clientWidth/W;r.style.left=c.x*q+"px";r.style.top=c.y*q+"px";r.style.width=c.w*q+"px";r.style.height=c.h*q+"px";
+   const b=(big.clientWidth||150)/c.w;big.style.backgroundImage="url("+z.img+")";big.style.backgroundSize=(W*b)+"px "+(H*b)+"px";big.style.backgroundPosition=(-c.x*b)+"px "+(-c.y*b)+"px";
+   rows.forEach(o=>{const [a,bb]=o.r();o.inp.min=a;o.inp.max=bb;o.inp.value=c[o.k]});
+   box.classList.toggle("ch",["x","y","w"].some(k=>c[k]!==z.crop[k]))};
+  rows.forEach(o=>{const d=document.createElement("div");d.className="ps";
+   const lb=document.createElement("span");lb.className="lg";lb.textContent=o.t;
+   const m=document.createElement("button");m.textContent="‹";m.setAttribute("aria-label",o.t+" manje");
+   const p=document.createElement("button");p.textContent="›";p.setAttribute("aria-label",o.t+" više");
+   const inp=document.createElement("input");inp.type="range";inp.step=o.st;inp.setAttribute("aria-label",o.t);o.inp=inp;
+   // size changes keep the frame's centre and its top edge
+   const setv=v=>{if(o.k==="w"){const cx=c.x+c.w/2;c.w=v;zcFix(c);c.x=cx-c.w/2}else c[o.k]=v;upd()};
+   inp.oninput=()=>setv(+inp.value);m.onclick=()=>setv(c[o.k]-o.st);p.onclick=()=>setv(c[o.k]+o.st);
+   d.append(lb,m,inp,p);sl.appendChild(d)});
+  const rs=document.createElement("button");rs.textContent="↺ Vrati predlog";rs.style.justifySelf="start";
+  rs.onclick=()=>{Object.assign(c,z.crop);upd()};sl.appendChild(rs);
+  im.onload=upd;wrap.append(big,f,sl);box.append(hd,wrap);el.appendChild(box);
+  window.addEventListener("resize",()=>{if(MODE==="zc")upd()});requestAnimationFrame(upd)})}
 function cuPanel(el){
  const end=M.clips[M.clips.length-1][1];
  CU0.forEach((c,k)=>{const u=U[k];
@@ -272,10 +387,12 @@ if(MU&&M){pickTrack(0);
  (function tick(){msync();requestAnimationFrame(tick)})();
 }
 function draw(){
- document.getElementById("help").textContent=MODE==="edit"?HE:MODE==="broll"?HB:MODE==="zoom"?HV:MODE==="pos"?HP:MODE==="takes"?HK:MODE==="title"?HT:MODE==="cu"?HC:MODE==="music"?HM:HN;
+ document.getElementById("help").textContent=MODE==="edit"?HE:MODE==="broll"?HB:MODE==="zoom"?HV:MODE==="pos"?HP:MODE==="takes"?HK:MODE==="title"?HT:MODE==="cu"?HC:MODE==="music"?HM:MODE==="wide"?HW:MODE==="zc"?HZ:HN;
  const el=document.getElementById("list");el.innerHTML="";SYNC=[];
  document.querySelectorAll(".tk video").forEach(v=>v.pause());
  if(MODE==="cu"){cuPanel(el);return}
+ if(MODE==="wide"){widePanel(el);return}
+ if(MODE==="zc"){zcPanel(el);return}
  if(MODE==="title"){
   const d=document.createElement("div");d.id="tp";
   const ta=document.createElement("textarea");ta.className="ed"+(TI.text!==(TI0?TI0.text:"")?" ch":"");ta.id="titletext";
@@ -289,8 +406,24 @@ function draw(){
   pvb.setAttribute("aria-label","Pusti deo sa naslovom");pvb.disabled=!(M&&TI.a&&TI.b);
   pvb.onclick=()=>{pv.currentTime=wt(TI.a[0],TI.a[1]);STOP=wt(TI.b[0],TI.b[1],1);PLAYING=-1;pv.play()};
   const del=document.createElement("button");del.innerHTML='<i class="ti ti-x" aria-hidden="true"></i> Ukloni naslov';
-  del.onclick=()=>{TI={text:"",a:null,b:null};PEND=null;draw();ovlT()};
-  r.append(rg,pvb,del);d.append(ta,r);el.appendChild(d)}
+  del.onclick=()=>{TI={text:"",a:null,b:null,y:TI.y};PEND=null;draw();ovlT()};
+  // height of the title (top of its box, 1920-high frame); Instagram safe zone 260-1330
+  const y0=TI0?TI0.st.y:230,hs=document.createElement("div");hs.className="ps";
+  const hl=document.createElement("span");hl.className="lg";hl.textContent="Visina naslova";
+  const hm=document.createElement("button");hm.textContent="‹";hm.setAttribute("aria-label","Naslov više");
+  const hp=document.createElement("button");hp.textContent="›";hp.setAttribute("aria-label","Naslov niže");
+  const hi=document.createElement("input");hi.type="range";hi.min=260;hi.max=1330;hi.step=2;hi.value=TI.y;hi.setAttribute("aria-label","Visina naslova (levo = više)");
+  const hr=document.createElement("button");hr.textContent="↺";hr.setAttribute("aria-label","Vrati visinu naslova");
+  // the title never covers the head (the user's rule): a height whose box would overlap st.head (+40px air) jumps to the nearer free side
+  const hd=TI0&&TI0.st.head,tH=()=>{const o=document.getElementById("ovt"),st=TI0.st,sc=pv.clientHeight/(st.H||1920);
+   return o.offsetHeight&&sc?o.offsetHeight/sc:Math.max(1,TI.text.split("\n").length)*st.fs*1.2+2*st.box};
+  const free=v=>{if(!hd)return v;const th=tH(),lo=hd[0]-40-th+TI0.st.box,hi=hd[1]+40+TI0.st.box;
+   if(v<=lo||v>=hi)return v;return (v-lo<hi-v&&lo>=260)?lo:hi};
+  const seth=v=>{TI.y=Math.max(260,Math.min(1330,Math.round(free(Math.max(260,Math.min(1330,v)))/2)*2));hi.value=TI.y;hs.classList.toggle("ch",TI.y!==y0);
+   if(M&&TI.a&&TI.b){const a=wt(TI.a[0],TI.a[1]),b=wt(TI.b[0],TI.b[1],1);if(!(pv.currentTime>=a&&pv.currentTime<b)){pv.pause();STOP=null;PLAYING=-1;pv.currentTime=(a+b)/2}}ovlT()};
+  hi.oninput=()=>seth(+hi.value);hm.onclick=()=>seth(TI.y-10);hp.onclick=()=>seth(TI.y+10);hr.onclick=()=>seth(y0);
+  hs.classList.toggle("ch",TI.y!==y0);hs.append(hl,hm,hi,hp,hr);
+  r.append(rg,pvb,del);d.append(ta,r,hs);el.appendChild(d)}
  if(MODE==="pos"){
   const d=document.createElement("div");d.className="ps all";
   const lb=document.createElement("span");lb.className="lg";lb.style.fontWeight="500";lb.style.color="var(--text-primary)";lb.textContent="Svi titlovi";
@@ -413,9 +546,11 @@ draw();
 const OFF={};
 if(!CS||!CAPS.length)OFF.pos="Pozicija titla: ovaj video još nema titlove. Kad Claude napravi titlove (captions.ass), ovde pomeraš svaki ekran titla gore ili dole.";
 if(!Object.keys(TK).length)OFF.takes="Dublovi: za ovaj video nisu pripremljeni dublovi. Kad je rečenica snimljena više puta, Claude napravi klipove dublova i ovde biraš bolji.";
+if(!ZC0)OFF.zc="Zum kadrovi: za ovaj video nisu pripremljeni zum kadrovi. Claude ih napravi iz plana zuma i ovde pomeraš okvir svakog zum kadra.";
+if(!WD0)OFF.wide="Kadar 1,0×: za ovaj video nisu pripremljeni kadrovi. Claude ih napravi iz izvornog snimka i ovde biraš jedan isti široki kadar za ceo video.";
 if(!CU0.length)OFF.cu="Close-up: ovaj video nema close-up umetke. Kad Claude doda close-up snimke, ovde ih pomeraš ranije ili kasnije.";
 Object.keys(OFF).forEach(m=>{const o=document.getElementById(m+"opt");o.classList.add("off");o.title=OFF[m]});
-["zoom","edit","broll","pos","takes","title","cu","music"].forEach(m=>{document.getElementById(m).onchange=e=>{
+["zoom","wide","zc","edit","broll","pos","takes","title","cu","music"].forEach(m=>{document.getElementById(m).onchange=e=>{
  if(OFF[m]){e.target.checked=false;setMode("none");document.getElementById("help").textContent=OFF[m];return}
  setMode(e.target.checked?m:"none")}});
 document.getElementById("reset").onclick=()=>{init();setMode("none")};
@@ -439,9 +574,9 @@ document.getElementById("send").onclick=()=>{
  if(PY.length)msg+="\n\nPozicije titlova:\n"+PY.map(c=>"titl "+(c.idx+1)+" („"+(T[c.i][c.k]||"").split("\n")[0]+"“): "+(Y[c.idx]?((Y[c.idx]<defY()?"više ":"niže ")+Math.abs(Y[c.idx]-defY())+" px"):"podrazumevano")).join("\n");
  if(B.length)msg+="\n\nB-roll:\n"+B.map((x,k)=>bLabel(k)+": od „"+words(x.a[0])[x.a[1]].replace(/[.,?!:;…]/g,"")+"“ ("+(x.a[0]+1)+".) do „"+words(x.b[0])[x.b[1]].replace(/[.,?!:;…]/g,"")+"“ ("+(x.b[0]+1)+".): "+x.media.trim()).join("\n");
  const KC=Object.keys(TK).filter(i=>K[i]!==TK[i].current);
- const T0=TI0?JSON.stringify([TI0.text,TI0.a,TI0.b]):JSON.stringify(["",null,null]);
- const TCH=JSON.stringify([TI.text.trim()?TI.text:"",TI.text.trim()?TI.a:null,TI.text.trim()?TI.b:null])!==T0;
- if(TCH)msg+="\n\nNaslov: "+(TI.text.trim()?"„"+TI.text.replace(/\n/g," / ")+"“ od „"+words(TI.a[0])[TI.a[1]].replace(/[.,?!:;…]/g,"")+"“ ("+(TI.a[0]+1)+".) do „"+words(TI.b[0])[TI.b[1]].replace(/[.,?!:;…]/g,"")+"“ ("+(TI.b[0]+1)+".)":"ukloniti");
+ const T0=TI0?JSON.stringify([TI0.text,TI0.a,TI0.b,TI0.st.y]):JSON.stringify(["",null,null,TI.y]);
+ const TCH=JSON.stringify([TI.text.trim()?TI.text:"",TI.text.trim()?TI.a:null,TI.text.trim()?TI.b:null,TI.y])!==T0;
+ if(TCH)msg+="\n\nNaslov: "+(TI.text.trim()?"„"+TI.text.replace(/\n/g," / ")+"“ od „"+words(TI.a[0])[TI.a[1]].replace(/[.,?!:;…]/g,"")+"“ ("+(TI.a[0]+1)+".) do „"+words(TI.b[0])[TI.b[1]].replace(/[.,?!:;…]/g,"")+"“ ("+(TI.b[0]+1)+".)":"ukloniti")+(TI.text.trim()?", visina "+TI.y:"");
  const UC=CU0.filter((c,k)=>Math.abs(U[k].st-c.st)>0.005||Math.abs(U[k].en-c.en)>0.005);
  if(UC.length)msg+="\n\nClose-upovi:\n"+CU0.map((c,k)=>{const u=U[k],a=[];
   if(Math.abs(u.st-c.st)>0.005)a.push("početak "+sgn(u.st-c.st)+" (na „"+wordAt(u.st)+"“)");
@@ -452,14 +587,19 @@ document.getElementById("send").onclick=()=>{
  if(MUS.length>1)msg+="\n\nIzabrana pesma: "+(MU.label||"")+" – "+(MU.title||MU.track)+" (od "+Math.floor(MU.start/60)+":"+(MU.start%60).toFixed(1).padStart(4,"0")+")";
  if(AL.length)msg+="\n\nMuzički akcenti"+(ACH?"":" (bez promena)")+":\n"+AL.map(x=>x.kind+": „"+x.word+"“ ("+(x.at[0]+1)+".)").join("\n");
  if(KC.length)msg+="\n\nDublovi:\n"+KC.map(i=>(+i+1)+". "+TK[i].takes[TK[i].current].label+" → "+TK[i].takes[K[i]].label+" („"+TK[i].takes[K[i]].text+"“)").join("\n");
+ if(WD0)msg+="\n\nKadar 1,0×: levo "+WD.x+", gore "+WD.y+", širina "+WD.w+" ("+(WD0.H/WD.h).toFixed(2).replace(".",",")+"× izvora)"+(["x","y","w"].some(k=>WD[k]!==WD0.crop[k])?"":" – predlog");
  msg+="\n\nPLAN_JSON: "+JSON.stringify(P);
  msg+="\nSENTENCES_JSON: "+JSON.stringify(S0.map((_,i)=>words(i).join(" ")));
  if(fix.length)msg+="\nCAPTIONS_JSON: "+JSON.stringify(E);
  if(PY.length){const o={};PY.forEach(c=>o[c.idx]=Y[c.idx]||0);msg+="\nPOS_JSON: "+JSON.stringify(o)}
  if(B.length)msg+="\nBROLL_JSON: "+JSON.stringify(B.map(x=>({from:x.a,to:x.b,media:x.media.trim()})));
- if(TCH)msg+="\nTITLE_JSON: "+JSON.stringify(TI.text.trim()?{text:TI.text,from:TI.a,to:TI.b}:{text:""});
+ if(TCH)msg+="\nTITLE_JSON: "+JSON.stringify(TI.text.trim()?{text:TI.text,from:TI.a,to:TI.b,y:TI.y}:{text:""});
  if(KC.length){const o={};KC.forEach(i=>o[i]=K[i]);msg+="\nTAKES_JSON: "+JSON.stringify(o)}
  if(UC.length)msg+="\nCLOSEUPS_JSON: "+JSON.stringify(CU0.map((c,k)=>({name:c.name,start:U[k].st,end:U[k].en,off:Math.round((c.off+U[k].st-c.st)*100)/100})));
+ if(ZC0){const ch=ZC0.items.map((z,n)=>({clip:z.clip,seg:z.seg,x:ZC[n].x,y:ZC[n].y,w:ZC[n].w,h:ZC[n].h,o:z.crop})).filter(c=>["x","y","w"].some(k=>c[k]!==c.o[k]));
+  if(ch.length){msg+="\n\nZum kadrovi pomereni:"+ch.map(c=>"\n- rečenica "+c.clip+(c.seg?" (posle promene "+c.seg+")":"")+": levo "+c.x+", gore "+c.y+", širina "+c.w).join("");
+   msg+="\nZOOMCROPS_JSON: "+JSON.stringify(ch.map(c=>({clip:c.clip,seg:c.seg,x:c.x,y:c.y,w:c.w,h:c.h})))}}
+ if(WD0)msg+="\nWIDE_JSON: "+JSON.stringify({x:WD.x,y:WD.y,w:WD.w,h:WD.h});
  if(AL.length)msg+="\nACCENTS_JSON: "+JSON.stringify(AL);
  if(MUS.length>1)msg+="\nMUSIC_JSON: "+JSON.stringify({track:MU.track,start:MU.start,label:MU.label});
  sendPrompt(msg)};

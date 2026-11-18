@@ -65,7 +65,8 @@ def main():
         b = min(word_time(ti, tj, sentences, words, starts, end=True) + 0.10, starts[ti + 1])  # never past its clip
         text = "\\N".join(l.strip() for l in title["text"].split("\n") if l.strip())
         k = next(n for n, l in enumerate(lines) if l.startswith("Format:") and n > lines.index("[Events]"))
-        lines.insert(k + 1, f"Dialogue: 1,{s2t(a)},{s2t(b)},{name},,0,0,0,,{text}")
+        # "y" = the height the user set with the Naslov slider (event MarginV, top of the box)
+        lines.insert(k + 1, f"Dialogue: 1,{s2t(a)},{s2t(b)},{name},,0,0,{int(title.get('y') or 0)},,{text}")
         print(f"title {a:.2f}s -> {b:.2f}s: {title['text']!r}", file=sys.stderr)
     else:
         print("title removed", file=sys.stderr)

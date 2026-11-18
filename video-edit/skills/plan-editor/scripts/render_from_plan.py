@@ -11,7 +11,8 @@ Steps, in the only order that works:
   3. B-roll over the zoom render (apply_broll.py) - captions go on top later
   4. captions: shift to the new clip starts if durations changed, apply text
      fixes, force the agreed style rules (top anchor, 0.12s empty gap
-     between screens), apply per-screen positions, burn
+     between screens), apply per-screen positions, move every screen
+     off faces (check_caption_overlap.py), burn
   5. a contact sheet (sheet.jpg) with frames just before/after every zoom
      change and inside every B-roll range, to look at before delivering
 
@@ -25,12 +26,22 @@ project.json (paths relative to the json file):
     "words": "words.json",         word_times.py output for that same render
     "durations": [6.28, 6.04, ...] clip durations of that render
     "wide_zoom": 1.3               optional: zoom for "1,0x" instead of the baseline crop
+    "wide_crop": {"x","y","w","h"} optional: one fixed "1,0x" frame for every clip
+    (ZOOMCROPS_JSON from the Zum kadrovi mode replaces single zoom frames after that)
+                                   (the reply's WIDE_JSON from "Kadar 1,0x" wins)
+    "overlays": "overlays.json"    optional: push-ins, second-camera inserts, Ken Burns
+                                   stills, end shot - apply_overlays.py (STYLE_educational.md)
+    "kenburns": 0.025              optional: slow push into B-roll stills (apply_broll.py)
     "alternate": true              optional: different shot size on every cut
                                    (build_zoom_selections.py --alternate)
   }
 
 Usage:
-  render_from_plan.py project.json plan_reply.txt workdir out.mp4
+  render_from_plan.py project.json plan_reply.txt workdir out.mp4 [--allow-overlap]
+
+Before the burn, subtitle/scripts/check_caption_overlap.py checks every caption
+screen on the real picture and moves the ones over a face / close-up hands
+(the user's rule); it stops when one has no free height, unless --allow-overlap.
 """
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
@@ -58,7 +69,7 @@ def run(cmd, **kw):
 def parse_reply(text):
     out = {}
     for key in ("PLAN_JSON", "SENTENCES_JSON", "CAPTIONS_JSON", "POS_JSON", "BROLL_JSON", "TAKES_JSON", "TITLE_JSON",
-                "ACCENTS_JSON", "MUSIC_JSON"):
+                "ACCENTS_JSON", "MUSIC_JSON", "WIDE_JSON", "ZOOMCROPS_JSON"):
         m = re.search(rf"^{key}:\s*(.+)$", text, re.M)
         if m:
             out[key] = json.loads(m.group(1))
@@ -156,11 +167,21 @@ def main():
                           "--sentences", work / "sentences.txt", "--words", rel("words"),
                           "--durations", durs, "--pre-filter", P.get("pre_filter", "")]
                          + (["--wide-zoom", str(P["wide_zoom"])] if P.get("wide_zoom") else [])
+                         + (["--wide-crop", "{w}:{h}:{x}:{y}".format(**(R.get("WIDE_JSON") or P["wide_crop"]))]
+                            if R.get("WIDE_JSON") or P.get("wide_crop") else [])
                          + (["--alternate"] if P.get("alternate") else []),
                          stdout=open(sel, "w"), stderr=subprocess.PIPE, text=True, check=True).stderr
     print(rep, file=sys.stderr, end="")
     if "no match" in rep:
         sys.exit("a planned zoom word was not found in the speech - fix it by hand (see report above)")
+    if R.get("ZOOMCROPS_JSON"):
+        # frames the user moved in the Zum kadrovi mode: seg = n-th crop on that clip's line
+        lines = open(sel).read().splitlines()
+        for z in R["ZOOMCROPS_JSON"]:
+            i, n = z["clip"] - 1, iter(range(10 ** 6))
+            new = "crop={w}:{h}:{x}:{y}".format(**z)
+            lines[i] = re.sub(r"crop=\d+:\d+:\d+:\d+", lambda m: new if next(n) == z["seg"] else m.group(0), lines[i])
+        open(sel, "w").write("\n".join(lines) + "\n")
     changes = [(int(m.group(1)) - 1, float(m.group(2)))
                for m in re.finditer(r"clip (\d+): .* at ([\d.]+)s in clip", rep)]
     zoom_mp4 = work / "zoom.mp4"
@@ -186,13 +207,32 @@ def main():
         json.dump(R["BROLL_JSON"], open(work / "broll.json", "w"), ensure_ascii=False)
         br = subprocess.run([sys.executable, PE / "apply_broll.py", zoom_mp4, work / "broll.mp4",
                              "--broll", work / "broll.json", "--sentences", work / "sentences.txt",
-                             "--words", words, "--durations", ",".join(str(d) for d in new_durs)],
+                             "--words", words, "--durations", ",".join(str(d) for d in new_durs)]
+                            + (["--kenburns", str(P["kenburns"])] if P.get("kenburns") else []),
                             stderr=subprocess.PIPE, text=True, check=True).stderr
         print(br, file=sys.stderr, end="")
         for m in re.finditer(r"B\d+: ([\d.]+)s -> ([\d.]+)s", br):
             a, b = float(m.group(1)), float(m.group(2))
             checks += [a + 0.3, b - 0.3]
         video = work / "broll.mp4"
+
+    # 3b. overlays: slow push-ins, second-camera inserts, Ken Burns stills, end shot
+    #     (apply_overlays.py; the "educational reel" recipe, STYLE_educational.md)
+    if P.get("overlays"):
+        pre = float(os.environ.get("PRE_PAD", 0.15))
+        with open(work / "overlay_cuts.tsv", "w") as f:
+            for line in open(rel("cuts")):
+                if line.strip():
+                    a0, b0 = line.split("\t")[:2]
+                    f.write(f"{Path(P['source']).stem}\t{max(0.0, float(a0) - pre):.3f}\t{float(b0):.3f}\n")
+        ovr = subprocess.run([sys.executable, PE / "apply_overlays.py", video, rel("overlays"), work / "overlays.mov",
+                              "--words", words, "--cuts", work / "overlay_cuts.tsv",
+                              "--durations", ",".join(str(d) for d in new_durs)],
+                             stderr=subprocess.PIPE, text=True, check=True).stderr
+        print(ovr, file=sys.stderr, end="")
+        for m in re.finditer(r"^\w+\s+([\d.]+)-\s*([\d.]+)s", ovr, re.M):
+            checks += [float(m.group(1)) + 0.2]
+        video = work / "overlays.mov"
 
     # 4. captions
     if P.get("ass"):
@@ -217,6 +257,22 @@ def main():
             m = re.search(r"title ([\d.]+)s -> ([\d.]+)s", tr)
             if m:
                 checks += [float(m.group(1)) + 0.3, float(m.group(2)) - 0.3]
+        # never burn a caption over a face: check every screen on the real picture,
+        # move the ones that touch a head / the hands of a close-up, stop on the rest
+        ov = subprocess.run([sys.executable, SUB / "check_caption_overlap.py", ass, video,
+                             "--fix", work / "c.tmp", "--pos-json", work / "caption_pos_auto.json"],
+                            capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        print(ov.stdout, file=sys.stderr, end="")
+        if ov.returncode not in (0, 1):
+            sys.exit(ov.stderr)
+        os.replace(work / "c.tmp", ass)
+        ev = [l.split(",", 9) for l in open(ass, encoding="utf-8") if l.startswith("Dialogue:")]
+        checks += [(t2s(ev[int(k)][1]) + t2s(ev[int(k)][2])) / 2
+                   for k in json.load(open(work / "caption_pos_auto.json"))][:12]
+        if ov.returncode == 1 and "--allow-overlap" not in sys.argv[5:]:
+            sys.exit("STOP: some captions still cover a face/hands with no free height (listed above). "
+                     "Shorten them or move them in the plan-editor (send POS_JSON again), then re-run. "
+                     "Only if the user looked at them and accepted: add --allow-overlap.")
         run([FFMPEG_FULL, "-nostdin", "-y", "-i", video, "-vf", f"subtitles={ass}", *venc(18), "-pix_fmt", "yuv420p", "-c:a", "copy", out, "-loglevel", "error"])
     else:
         run(["cp", video, out])

@@ -71,11 +71,17 @@ def norm(w):
 
 
 HEADROOM = None  # --headroom: more space above the head, e.g. for a header graphic
+# --wide-crop "w:h:x:y": ONE fixed 1.0x frame for every clip, chosen by the user in
+# the plan editor's "Kadar 1,0x" mode (2026-11-14: "da budu uvek isti, nema cas
+# vise levo cas desno"); tighter levels stay centred per clip.
+WIDE_CROP = None
 
 
 def crop(cx, ht, lvl, wide=None):
     # --wide-zoom: a fixed zoom for level 0 when the baseline crop shows too
     # much (on a real reel it showed half the desk and its bottom edge)
+    if lvl == 0 and WIDE_CROP:
+        return f"crop={WIDE_CROP},scale=1080:1920"
     if lvl == 0:
         args = ["--zoom", str(wide)] if wide else ["--baseline"]
     else:
@@ -117,9 +123,12 @@ def main():
                     help="change the shot size on every cut between clips")
     ap.add_argument("--headroom", type=float, default=None,
                     help="headroom fraction passed to compute_crop.py (default there: 0.09)")
+    ap.add_argument("--wide-crop", default=None,
+                    help='one fixed crop "w:h:x:y" for level 0 in every clip (plan editor WIDE_JSON)')
     a = ap.parse_args()
-    global HEADROOM
+    global HEADROOM, WIDE_CROP
     HEADROOM = a.headroom
+    WIDE_CROP = a.wide_crop
 
     cuts = [l.rstrip("\n").split("\t")[:2] for l in open(a.cuts) if l.strip()]
     pos = json.load(open(a.positions))

@@ -27,12 +27,14 @@ timeline.
 
 Usage:
   make_phrase_captions.py words.json out.ass [--emphasis "key term"]
-      [--censor "sex,seks"] [--no-hook] [--no-ellipsis] [--size 1080x1920]
+      [--censor "sex,seks"] [--no-hook] [--no-ellipsis] [--digits] [--size 1080x1920]
       [--body-y 0.47] [--emphasis-font Impact]
 """
 import argparse
 import json
+import os
 import re
+import sys
 
 GAP = 0.12           # empty moment between cards
 MAX_WORDS = 8
@@ -159,6 +161,8 @@ def main():
     ap.add_argument("--censor", default="", help="comma list of words shown with = for the first vowel")
     ap.add_argument("--no-hook", action="store_true")
     ap.add_argument("--no-ellipsis", action="store_true")
+    ap.add_argument("--digits", action="store_true",
+                    help="English number words -> digits: 1926, 100 years, $4,000, 25%% (numbers_en.py)")
     ap.add_argument("--size", default="1080x1920")
     # Instagram safe zone (basic skill): everything inside x 150-930, y 260-1330
     # and out of the button rail (x > 860, y 950-1660) on 1080x1920. The
@@ -175,6 +179,12 @@ def main():
     words = load_words(a.words)
     for w in words:
         w[0] = censor(w[0], bad)
+    if a.digits:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from numbers_en import convert
+        before = len(words)
+        words = convert(words)
+        print(f"--digits: {before - len(words)} number word(s) merged into digits", file=sys.stderr)
 
     events = []  # (start, end, style, text)
     i = 0

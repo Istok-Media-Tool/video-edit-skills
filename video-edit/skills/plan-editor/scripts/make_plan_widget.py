@@ -100,7 +100,9 @@ def title_from_ass(ass_path, durations, sentences, media):
             H = int(line.split(":")[1])
         if line.startswith("Style:") and not line.startswith("Style: Default,"):
             f = line.strip().split(",")
-            style = style or {"name": f[0][6:].strip(), "fs": float(f[2]), "box": float(f[16]), "y": int(f[21])}
+            c = f[6].strip()[-6:]  # box colour (OutlineColour, &HAABBGGRR) -> css #RRGGBB
+            style = style or {"name": f[0][6:].strip(), "fs": float(f[2]), "box": float(f[16]), "y": int(f[21]),
+                              "bg": "#" + c[4:6] + c[2:4] + c[0:2]}
         elif line.startswith("Dialogue:") and ev is None:
             p = line.rstrip("\n").split(",", 9)
             if p[3] != "Default":
@@ -122,6 +124,8 @@ def title_from_ass(ass_path, durations, sentences, media):
     a = next((w for t, w in pos if t >= st - 0.15), pos[0][1])
     b = [w for t, w in pos if t < en - 0.05] or [pos[-1][1]]
     st_ = dict(style or {"fs": 92, "box": 22, "y": 230}, H=H)
+    if int(ev[7] or 0):  # the title's own MarginV wins over its style
+        st_["y"] = int(ev[7])
     return {"text": ev[9].replace("\\N", "\n"), "a": a, "b": b[-1], "st": st_, "style": ev[3]}
 
 
@@ -190,6 +194,10 @@ def main():
     ap.add_argument("--accents", help="ACCENTS_JSON from a previous reply, to show the music accents again")
     ap.add_argument("--music", help="align_music.py --out json (one aligned track) or rank_tracks.py --out json "
                     "(A / B / C to switch tracks), played with the video (browser pane)")
+    ap.add_argument("--zoom-crops", help="zcrops.json {W, H, items: [{clip, seg, zoom, img, crop}]} - shows the Zum kadrovi mode (frame of each zoom shot)")
+    ap.add_argument("--title-head", help="top,bottom of the speaker's head (hair to chin, output px) where the title is - "
+                    "the Naslov slider never lets the title overlap it")
+    ap.add_argument("--wide", help="wide.json {W, H, crop, frames} - shows the Kadar 1,0x mode (one fixed wide frame)")
     ap.add_argument("--takes", help="takes.json from make_take_clips.py - shows the Dublovi mode (browser pane only)")
     a = ap.parse_args()
     sentences = [l.strip() for l in open(a.sentences, encoding="utf-8") if l.strip()]
@@ -225,6 +233,8 @@ def main():
     html = TEMPLATE.read_text(encoding="utf-8")
     html = html.replace("__SENTENCES__", json.dumps(sentences, ensure_ascii=False))
     html = html.replace("__PLAN__", json.dumps(plan, ensure_ascii=False))
+    html = html.replace("__ZCROPS__", json.dumps(json.load(open(a.zoom_crops)) if a.zoom_crops else None))
+    html = html.replace("__WIDE__", json.dumps(json.load(open(a.wide)) if a.wide else None))
     html = html.replace("__CAPTIONS__", json.dumps(caps, ensure_ascii=False))
     html = html.replace("__POS__", json.dumps(json.load(open(a.pos)) if a.pos else {}))
     html = html.replace("__CAPSTYLE__", json.dumps(caption_style(a.ass) if a.ass else None))
@@ -266,6 +276,8 @@ def main():
         media = media_info(a.media, a.words, [float(x) for x in a.durations.split(",")], sentences)
     html = html.replace("__MEDIA__", json.dumps(media, ensure_ascii=False))
     title = title_from_ass(a.ass, durs, sentences, media) if a.ass else None
+    if title and a.title_head:
+        title["st"]["head"] = [int(v) for v in a.title_head.split(",")]
     html = html.replace("__TITLE__", json.dumps(title, ensure_ascii=False))
     sys.stdout.write(html)
 

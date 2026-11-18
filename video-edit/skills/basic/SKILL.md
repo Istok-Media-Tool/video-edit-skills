@@ -368,6 +368,24 @@ Before showing frames for approval, draw the guide lines on a test frame
 (y 260 and 1330, x 150 and 930, plus the rail block) and check the
 bounding box of every graphic against them. Move it in if it crosses.
 
+## Encoder - ALWAYS Apple VideoToolbox
+
+The user's rule (2026-11-15): every H.264 encode, in every skill and every
+ad-hoc ffmpeg command - cuts, zoom, captions, overlays, graphics composites,
+music mixes, HyperFrames renders, previews, masters and share copies - goes
+through Apple VideoToolbox. Never pick libx264 by choice on this Mac.
+
+- Scripts: `venc.py` (`*venc(18)`) and `cut_and_concat.sh` already do it.
+- By hand: `-c:v h264_videotoolbox -q:v 75` (master, ~ CRF 18),
+  `-q:v 85` (an intermediate that gets re-encoded, ~ CRF 14), `-q:v 65`
+  (share copy, ~ CRF 24). Add `-g 25` for a HyperFrames background.
+- HyperFrames MP4: `npx hyperframes render ... --gpu` (verified: writes
+  `h264_videotoolbox`). Transparent layers stay `--format mov` (ProRes 4444),
+  composited with ffmpeg + VideoToolbox.
+- Measured on REKLAMA 1 (164 s, graphics overlay): q 75 in 14 s vs ~2 min
+  for libx264 -preset slow -crf 15, SSIM 0.996, check_video OK.
+- libx264 only where VideoToolbox does not exist (Intel, Windows, Linux).
+
 ## Line breaks - every piece of text on screen
 
 Every line break in text the viewer reads - captions, titles, lists,

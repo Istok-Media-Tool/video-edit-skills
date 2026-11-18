@@ -23,6 +23,9 @@ Inputs:
   --durations   comma list of this video's clip durations (ffprobe clip_NNN.mp4)
   --lead        seconds the B-roll starts before its first word (default 0.08)
   --tail        seconds it stays after its last word ends (default 0.10)
+  --kenburns    slow push into STILL images, zoom per second (0.025 = the
+                "educational reel" look, 1.0 -> ~1.1x over 4 s); a range's
+                own "kb" wins. Default 0 = still image, as before
 
 Prints where each range landed (and how each word was matched) for checking.
 
@@ -80,6 +83,7 @@ def main():
     for a in ("--broll", "--sentences", "--words", "--durations"):
         ap.add_argument(a, required=True)
     ap.add_argument("--lead", type=float, default=0.08)
+    ap.add_argument("--kenburns", type=float, default=0.0, help="zoom per second on still images")
     ap.add_argument("--tail", type=float, default=0.10)
     a = ap.parse_args()
 
@@ -119,7 +123,19 @@ def main():
         is_img = os.path.splitext(media)[1].lower() in IMAGE_EXT
         inputs += (["-loop", "1", "-t", str(dur), "-i", media] if is_img else ["-t", str(dur), "-i", media])
         hold = "" if is_img else f",tpad=stop_mode=clone:stop_duration={dur}"
-        chains.append(f"[{k}:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,"
+        kb = float(r.get("kb", a.kenburns)) if is_img else 0.0
+        if kb > 0:
+            # Ken Burns: a slow, steady push into the still (~2.5 %/s reads calm), rendered at 2x
+            # so zoompan's whole-pixel steps don't make the picture shake
+            n = max(1, int(round(dur * fps)))
+            z1 = 1 + kb * dur
+            move = (f"scale={2 * W}:{2 * H}:force_original_aspect_ratio=increase,crop={2 * W}:{2 * H},"
+                    f"zoompan=z='1+{z1 - 1:.5f}*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:"
+                    f"s={W}x{H}:fps={fps:g},")
+            print(f"B{k}: Ken Burns 1.00 -> {z1:.2f}x", file=sys.stderr)
+        else:
+            move = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+        chains.append(f"[{k}:v]{move}setsar=1,"
                       f"fps={fps:g},format=yuv420p{hold},trim=duration={dur},setpts=PTS-STARTPTS+{t0}/TB[b{k}]")
         overlays.append((k, t0, t1))
 

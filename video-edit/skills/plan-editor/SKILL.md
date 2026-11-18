@@ -24,6 +24,10 @@ Every rule here came from the user rejecting something:
 - Captions must never move between screens, and must leave a brief empty
   moment between screens so the eye notices the change.
 - Any caption screen can be moved up or down so it never covers the face.
+  The user does not have to find them: `check_caption_overlap.py`
+  (subtitle skill, Step 6b) checks every screen on the real picture and
+  moves the ones over a face / close-up hands; render_from_plan.py runs it
+  before every burn and stops if one can't be moved.
 
 Never render zoom, B-roll or captions from a plan the user hasn't seen in
 this editor. Their "Pošalji plan" counts as approval to render.
@@ -50,6 +54,33 @@ redesign, restyle or replace it with a different page.
 - Words at 20px, line-height 1.35, normal word spacing (each word is a
   clickable chip, but its padding is only 1px 3px - wider chips read as
   big gaps between words, which the user rejected).
+- Under "Rečenica N  0:04 / 1:47": "Pusti ceo video" (play / pause the
+  whole render from where the player is, no stop at the sentence end) and
+  "Od početka" (added 2026-11-13, the user asked to watch the whole video
+  in the editor).
+- Kadar 1,0× (added 2026-11-14): the user wants EVERY 1.0x shot framed
+  identically ("da budu uvek isti, nema čas više levo čas desno") and
+  picks the frame themself. Sliders Levo–desno / Gore–dole / Širina kadra
+  (‹ › fine steps, ↺ back to the proposal), a big preview of what the
+  audience sees, and a tile per 1.0x clip with the frame drawn on it, so
+  they see where a held phone or the desk edge gets cut. Build the tiles
+  (one 270x480 frame per representative 1.0x clip, base64) plus a proposal
+  crop (median face cx, 9% headroom) into `wide.json`
+  (`{"crop": {x,y,w,h}, "frames": [{"clip", "src"}]}`) and pass
+  `--wide wide.json` to make_plan_widget.py. The reply's `WIDE_JSON`
+  becomes `--wide-crop w:h:x:y` for build_zoom_selections.py (render_from_plan
+  does this; or `"wide_crop"` in project.json) - one fixed crop for level 0,
+  replacing per-clip recentering.
+- Zum kadrovi (added 2026-11-15, "daj mi sad zoom kadrove da sredimo
+  pozicije"): one card per zoom frame (every non-1.0x crop in the
+  selections, including a change mid-clip, labelled "od reči ..."), with
+  the audience view, the source frame with the crop drawn on it, sliders
+  Levo–desno / Gore–dole / Veličina okvira and ↺. Build `zcrops.json`
+  (`{"W","H","items":[{"clip","seg","zoom","img","crop"}]}`, seg = n-th
+  crop on that clip's selections line, img = a source frame from the middle
+  of that segment, 540x960 base64) and pass `--zoom-crops zcrops.json`.
+  The reply's `ZOOMCROPS_JSON` (only moved frames) replaces those crops in
+  the selections file (render_from_plan does it right after building it).
 - Dublovi: takes side by side, left / right, green frame on the one in
   the cut, "Ovaj je bolji" under each.
 - Close-up (added 2026-11-04, approved for every video with inserts): one
@@ -117,6 +148,18 @@ then plays the video from that word. Zoom marks (blue) and B-roll ranges
   SAD"). A text box (new line = new line on screen), then click the word
   it starts on and the word it lasts until; the player shows it at its
   real place and "Pogledaj" plays that stretch; "Ukloni naslov" removes
+  it. "Visina naslova" (slider, ‹ › ±10, ↺; added 2026-11-15) moves the
+  title up / down within the safe zone (y 260-1330) and jumps the player
+  to it; TITLE_JSON then carries `"y"`, which apply_title.py writes as the
+  title's event MarginV. The title must NEVER cover the speaker's head
+  (the user, 2026-11-15, after a title at y 260 sat over the hair on a
+  1.0x shot): measure the head (hair top to chin, output px) in the
+  title's clip and pass `--title-head top,bottom` - the slider then jumps
+  over that zone (+40px air), and a title with no room above the head goes
+  under the chin (on "REKLAMA 1": head 258-730, title at y 800). Look at a
+  frame of the title before sending. The preview box takes the title style's
+  OutlineColour (this user's title box on "REKLAMA 1": dark red #B3121C,
+  `&H001C12B3` as OutlineColour and BackColour).
   it. It reads the existing title from `--ass` (the first Dialogue whose
   Style isn't Default) - so put the title in captions.ass with its own
   style, never burn it separately.
@@ -316,7 +359,15 @@ source, cuts, positions, pre_filter, ass, words, durations - the files from
 4. captions: shifted to the new clip starts if durations changed, forced
    to the agreed rules (top anchor Alignment 8 / MarginV 1215; every
    screen ends 0.12s before the next starts), text fixes, then per-screen
-   positions (event MarginV), burned with ffmpeg-full;
+   positions (event MarginV), then `check_caption_overlap.py --fix` on the
+   picture (zoom + B-roll, no captions): every screen touching a face or
+   close-up hands moves (whole style first, then single cards); it STOPS
+   if a screen has no free height - shorten it or ask the user, never pass
+   `--allow-overlap` on your own; burned with ffmpeg-full;
+   (between B-roll and captions: `"overlays"` in project.json ->
+   apply_overlays.py - push-ins, close-up camera, Ken Burns stills, end
+   shot; `"kenburns": 0.025` gives B-roll stills a slow push, see
+   STYLE_educational.md)
 5. `work/vN/sheet.jpg`: frames before/after each zoom change, inside each
    B-roll range and on each moved caption. LOOK at it before delivering.
 6. then run `$SKILLS/basic/scripts/check_video.py out_vN.mp4
@@ -335,7 +386,16 @@ reply) and reopen the editor so they see it before rendering.
   timing and position, word times for playback, caption style for preview).
 - `scripts/serve_plan_editor.py` - local server for the browser pane
   (media with seeking, plan saved to a file).
-- `scripts/render_from_plan.py` - the whole render from a sent plan.
+- `scripts/render_from_plan.py` - the whole render from a sent plan
+  (with the caption-over-face gate before the burn).
+- `scripts/apply_overlays.py` - slow push-ins, second-camera inserts (in
+  sync or from other moments), Ken Burns stills and an end shot, by phrase
+  (project.json `"overlays"`; render_from_plan runs it after B-roll).
+- `scripts/sync_cameras.py` - pairs main / second camera files by sound and
+  prints their offsets (the `second_camera` block for overlays.json).
+- `STYLE_educational.md` - the "educational reel" recipe (avocado hass):
+  numbers, steps and tools for that look. Read it when the user asks for
+  that look or sends the prompt from prompt_stil_avocado.md.
 - `scripts/apply_broll.py` - B-roll overlay (used by the render script).
 - `scripts/make_take_clips.py` - preview clips + takes.json for the Dublovi mode.
 - `scripts/make_closeup_clips.py` - close-up previews + closeups.json for the Close-up mode;

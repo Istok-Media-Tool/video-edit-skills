@@ -445,7 +445,7 @@ def render(P, audio, out_wav):
 
 
 def main():
-    ap = argparse.ArgumentParser(usage=__doc__)
+    ap = argparse.ArgumentParser(usage=__doc__.replace("%", "%%"))
     ap.add_argument("map")
     ap.add_argument("--audio", help="audio to render from (default: the map's track)")
     ap.add_argument("--accents")

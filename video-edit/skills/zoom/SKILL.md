@@ -223,6 +223,16 @@ ffmpeg -nostdin -y -i final_output.mp4 -c:v h264_videotoolbox -q:v 65 -pix_fmt y
 `-c:v libx264 -preset slow -crf 24`, which is the fallback when `h264_videotoolbox` is missing
 and gives a ~40% smaller file when size matters more than time.)
 
+## Slow push-ins and the uncropped wide shot (educational reel look)
+
+Hard punch-ins come from this skill. A SLOW animated zoom over a whole
+sentence (1.0 -> 1.45x on a pay-off line) is done after the zoom render by
+`plan-editor/scripts/apply_overlays.py` ("push" items) - it measures the head
+in that range itself (Apple Vision) and keeps the head top 9% below the frame
+top as the zoom grows. For a wide shot that is the WHOLE camera frame (the
+"avocado hass" reference: no crop on the wide, half of the video), set
+`"wide_zoom": 1.0` in project.json. Recipe: plan-editor/STYLE_educational.md.
+
 ## Objects the speaker shows must stay whole in every zoom
 
 On a real reel the speaker shows photos on a tablet next to him; crops centered

@@ -89,16 +89,16 @@ python3 scripts/rank_tracks.py music/*.mp3 --meta music/meta.json --accents ... 
 
 Every track is arranged for the marked places (score only, no audio) and
 scored out of 100 - six criteria, each measured 0..1, with the weights
-agreed with the user (2026-11-10) in **`scripts/rank_weights.json`**:
+agreed with the user (2026-11-12: main places, ending and arc count the same) in **`scripts/rank_weights.json`**:
 
 | criterion | weight | measures |
 |---|---|---|
-| main_hits | 30 | poenta / promena land on a real event after arranging |
+| main_hits | 25 | poenta / promena land on a real event after arranging |
 | closure | 25 | the track's own ending - a final chord / hit, not a fade |
-| natural | 20 | the arrangement still sounds like the track: few joins, clean seams, no event reused for several places, no level jumps at joins |
-| voice | 10 | the music is not busy under the voice (onset density) |
-| arc | 10 | the music rises with the story |
-| accents | 5 | naglasak places on a beat of the arrangement |
+| natural | 15 | the arrangement still sounds like the track: few joins, clean seams, no event reused for several places, no level jumps at joins |
+| voice | 7 | the music is not busy under the voice (onset density) |
+| arc | 25 | the music rises with the story |
+| accents | 3 | naglasak places on a beat of the arrangement |
 
 Tracks with vocals, shorter than the video + tail, or that can't be
 arranged are not scored (listed at the bottom). When the user says what
@@ -185,6 +185,20 @@ A / B / C (D... for Epidemic edits) switch the version; on the words: ♪ a
 hit, ♩ a new section, ✂ a join of the arrangement (listen to those). The
 sent plan's `MUSIC_JSON` names the pick.
 
+### 6b. A pause in the music for contrast (REKLAMA 1, 2026-11-15)
+
+The user: "kad kaže 'pazite ovo, Lora išla na terapiju' tad bi trebalo da
+stane muzika, da napravimo kontrast, pa kasnije na nekoj promeni opet da
+krene". So: the music stops right before the line that opens a new story
+(a 2 s qsin fade starting on the previous sentence's last word, silent ~1 s into the new line - a 60 ms cut read as "previše oštro") and comes back on a
+**promena** placed on the word where the story turns (here "snašao", 13 s
+later) - arrange_music then puts a new section exactly there. Mark the
+end of the previous sentence as naglasak so the music stops near a beat.
+The silence is a volume gate on the arranged WAV (`volume='if(...)'`,
+written to the WAV the editor plays, so the user hears it) and the marks
+inside the gap are dropped from music.json; mix_bed's `--under` bed then
+has nothing there - that is the point.
+
 ### 7. Sound effects where the music has nothing
 
 From arrange_music's "predlog efekta" (impact on a poenta with no real
@@ -236,6 +250,26 @@ early).
   opens calm and climbs wants a window that starts low and reaches a hit
   near the last sentence.
 
+## When arrange_music.py can't - arrange_manual.py
+
+A track that ends in a FADE has no closure in track_map, and arrange_music
+then improvises: on "avocado hass" (2026-11-18, "Dust on the Road") it reused
+the same hit three times and found no ending. The reference editor had simply
+jumped the track at section starts and let its real last seconds play under
+the end shot. Do the same:
+
+```bash
+python3 scripts/arrange_manual.py track.mp3 music/arr.wav --video video.mp4 \
+  --at "0:0, 90.18:16.68, 105.54:47.45" --end-on-track-end --end-from 129.84
+python3 scripts/mix_bed.py video.mp4 music/arr.wav final.mp4 --words words.json --under 10 --lift 0 --track-start 0
+```
+
+`--at` = video time : track time, one per stretch (each jump on a bar line
+of the track - track_map's sections; a change on the plan's turning points).
+`--end-on-track-end` places the last stretch so the track's own ending lands
+on the video's last frame. 40 ms equal-power crossfades; every join is
+printed to listen to. Tell the user it was arranged by hand and why.
+
 ## Sourcing without the connector
 
 The built-in browser pane has its own login (not the user's Chrome);
@@ -282,6 +316,7 @@ What fixed it (a project script, not in this skill yet):
 - `scripts/align_music.py` - the best start with no editing (used by rank).
 - `scripts/rank_tracks.py` + `scripts/rank_weights.json` - the ranking (step 3).
 - `scripts/arrange_music.py` - local re-arrangement (step 4).
+- `scripts/arrange_manual.py` - hand-made arrangement (jumps you choose, track's own ending) when arrange_music.py can't.
 - `scripts/epidemic_edit.py` - Epidemic EditRecording request / collect (step 4).
 - `scripts/verify_music.py` - the check of every version (step 5).
 - `scripts/mix_bed.py` - the mix with lift, sting and sound effects (step 8).

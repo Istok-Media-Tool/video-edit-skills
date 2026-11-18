@@ -39,7 +39,17 @@ real project, each one worth not re-learning from scratch:
    caption changed; back-to-back captions read as the same text
    flickering. Shorten the earlier caption's End, never delay the next
    Start (that one is synced to speech).
-6. Caption text is not required to be a verbatim transcript - fix
+7. **A caption must NEVER cover a face** - the speaker's head (hair to
+   beard), faces in photos / B-roll, or the hands doing the thing in a
+   close-up. The user rejected this many times, and two prose rules ("look
+   at 2-3 frames", "move the card in the editor") did not stop it: the 2-3
+   frames were picked by text length, so the shots where the head sits low
+   (the 1.0x shot), the photos and the close-ups were never looked at, and
+   `check_safe_zone.py` renders on flat grey, so it cannot see a face at
+   all. Now a script checks EVERY screen on the real picture and moves the
+   ones that touch (Step 6b). It is not optional and not replaced by
+   looking at frames.
+8. Caption text is not required to be a verbatim transcript - fix
    grammar/wording issues (a misheard word, an awkward construction) and
    drop or add words the user asks to change, same as you would when
    copy-editing text anyone will read.
@@ -113,8 +123,8 @@ or `stt.py`'s .json). What it writes:
   lines, <= 32 characters a line - Inter Medium 54 on a ~85% black box,
   top-anchored with the first line at 40% of the height (the references
   sit at ~47-55%, but there a 2-line card reaches Instagram's button rail;
-  move single cards in the plan-editor if they cover the face or an
-  object). A phrase ends at punctuation or a pause of 0.18s+; a card cut by
+  every screen is checked against the faces in the picture by
+  `check_caption_overlap.py`, Step 6b). A phrase ends at punctuation or a pause of 0.18s+; a card cut by
   length never ends on "his / the / na / za"; 1-2 leftover words of a
   sentence stay on the card before. 0.12s empty gap between cards.
 - **"…"** ends a card that stops mid-sentence (trailing commas are still
@@ -125,6 +135,11 @@ or `stt.py`'s .json). What it writes:
   box, letters revealed one by one while the words are spoken (karaoke
   `\k` with an invisible secondary colour).
 - **Censor**: words in `--censor` get "=" for the first vowel ("s=x").
+- **`--digits`** (English): spelled-out numbers become digits the way the
+  reference reels show them - "nineteen twenty-six" -> 1926, "one hundred
+  years" -> 100 years, "four thousand dollars" -> $4,000, "one dollar" ->
+  $1, "five percent" -> 5%. Conservative: "one tree", "one in a million"
+  stay words (numbers_en.py, self-test: `python3 numbers_en.py`).
 
 Every screen must stay inside the Instagram safe zone (basic skill:
 x 150-930, y 260-1330, clear of the button rail). The defaults do on
@@ -246,7 +261,8 @@ render just that frame:
   -vf "subtitles=captions.ass" -frames:v 1 check.png -loglevel error
 ```
 
-Look at each one for: text overflowing past the margins, more lines than
+This step is for text and layout only - it does NOT replace Step 6b for
+faces. Look at each one for: text overflowing past the margins, more lines than
 intended (a sign a line is wider than expected and something upstream needs
 rewording/re-breaking), and the vertical position actually reading as
 "lower-middle" rather than too close to the very bottom edge or high enough
@@ -254,7 +270,46 @@ to cover the face. Fix and re-check before moving on - this loop is fast
 (a few seconds per frame) and catches exactly the mistakes a full render
 would otherwise waste minutes reproducing.
 
+## Step 6b: Every screen off the faces - check_caption_overlap.py (MANDATORY)
+
+Run it on the picture the captions go on, WITHOUT captions burned in
+(after zoom, B-roll, close-ups), with the final .ass:
+
+```bash
+python3 scripts/check_caption_overlap.py captions.ass picture.mp4 \
+  --fix captions_ok.ass --pos-json caption_pos_auto.json
+```
+
+- For every screen it renders the card alone (libass, real fonts) and
+  looks at frames under it every 0.2s with Apple Vision (faces + hands;
+  the Swift helper `vision_look.swift` compiles itself on first use).
+- Head = face box + hair above + chin/beard below + 24px air. Faces in
+  photos count. Hands count only when no face is in the frame (a
+  close-up/insert, where the hands are the action); there the top 30% is
+  kept free too, because a face cut by the frame edge (only mouth and
+  beard) is not detected and sits there.
+- `--fix` first looks for ONE height for the whole style that clears
+  (almost) everything - captions must not jump between screens - then
+  moves single remaining cards to the nearest free height inside the safe
+  zone. It writes the event's MarginV (same field as the plan-editor
+  sliders), and `--pos-json` writes the moves as POS_JSON
+  (`make_plan_widget.py --pos caption_pos_auto.json` shows them in the
+  editor already moved).
+- Exit code 1 = a card with NO free height (prints "NEMA SLOBODNE
+  VISINE"): shorten the line, or ask the user how they want it - never
+  burn it as it is. Run it again on the fixed file; it must print
+  "0 preko lica/ruke". Then check_safe_zone.py again (moved cards).
+- `render_from_plan.py` (plan-editor) runs this itself before the burn
+  and stops on exit 1 (`--allow-overlap` only after the user saw the card
+  and accepted it).
+
+Tested on the "avocado hass" reel (2026-11-18): 42 of 68 screens touched a
+head or close-up hands at the style's y 948; after --fix, all styles moved
++100px, 8 single cards moved, 2 left for a manual decision, 0 over a face.
+
 ## Step 7: Burn the final video
+
+Only the .ass that passed Step 6b (`captions_ok.ass`).
 
 ```bash
 /opt/homebrew/opt/ffmpeg-full/bin/ffmpeg -nostdin -y -i video.mp4 \

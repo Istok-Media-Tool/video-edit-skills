@@ -1,16 +1,37 @@
-# One card template for all seven eras: same slot, same rows, same timing.
-# Only the font, palette and one texture inside the card say which era it is.
-# Rows: year / what the brows were like / the brow drawn / the decade ruler.
-import math, re
-from gen import brow, hairs, P   # brow shapes from the first draft
-B = [0.00, 4.96, 12.56, 21.24, 27.04, 39.56, 51.56, 64.48]
-START = [2.64] + [b + 0.24 for b in B[1:7]]
-END = [B[i + 1] - 0.28 for i in range(6)] + [64.48]
-ERAS = ["60", "70", "80", "90", "00", "10", "20"]
-LAB = ["60", "70", "80", "90", "00", "10", "20"]
-X, Y, W, H = 40, 136, 440, 320          # scaled .9 -> bottom at 424, above the tablet in the zoomed shots
-SC = 0.9          # the slot: top-left, free in every shot
-T = {  # font, year size, card, year colour/effect, text colour, accent, extra card markup, extra css
+# One card template for every part of the video: same slot, same rows, same timing.
+# Only the label, the line and the illustration change per part (house look: 80s neon).
+# Rows: label / one line of what it was / the illustration drawn / the ruler of all parts.
+#
+#   python3 make_cards.py parts.json [--neon <lt-neon-border card>]
+#
+# Run inside the HyperFrames project: writes compositions/era<id>.html + neon<id>.html
+# and puts their hosts into index.html (after the <video id="bg"> line).
+# parts.json (example: ../examples/obrve_parts.json):
+#   {"slot":  {"x": 40, "y": 136, "w": 440, "h": 320, "scale": 0.9},   # optional, example values
+#    "ruler": ["60", "70", ...],                                         # all chapters, short
+#    "parts": [{"id": "60", "label": "60-e", "line": "blagi luk",
+#               "start": 2.64, "end": 4.68,       # cut+0.24 .. next cut-0.28 (first/last on a cut)
+#               "art": "60",                      # brow shape from gen.py, "hairs", {"d": "<path>"} or null
+#               "mark": 0,                        # optional: its place on the ruler (default = its index)
+#               "fx": ["shimmer"]}, ...]}         # optional extras: shimmer (chrome sweep on the label),
+#                                                 #   pop (texture pops in), blink (texture blinks)
+# Custom art: one closed path in a 300x90 viewBox, drawn as stroke then filled.
+import argparse, json, re, sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gen import hairs, P   # brow shapes from the first draft
+
+ap = argparse.ArgumentParser()
+ap.add_argument("parts")
+ap.add_argument("--neon", default="compositions/lt-neon-border.html",
+                help="the lt-neon-border card; falls back to scripts/lt-neon-border_card.html")
+a = ap.parse_args()
+C = json.load(open(a.parts))
+PARTS, LAB = C["parts"], C["ruler"]
+S = {"x": 40, "y": 136, "w": 440, "h": 320, "scale": 0.9, **C.get("slot", {})}
+X, Y, W, H, SC = S["x"], S["y"], S["w"], S["h"], S["scale"]
+STYLE = C.get("style", "80")   # the user's house look for chapter cards; others only when asked
+T = {  # font, label size, card, label colour/effect, text colour, accent, extra card markup, extra css
  "60": dict(f="'Josefin Sans'", ys=124, card="background:#f1e8d3;border:5px solid #111", yr="color:#111", tx="#111", ac="#e2611f",
             deco='<div class="dc"></div>', css="#dc0{}.dc{position:absolute;right:-140px;top:-140px;width:250px;height:250px;border-radius:50%;background:repeating-radial-gradient(circle,#e2611f 0 16px,#f1e8d3 16px 30px,#111 30px 36px,#f1e8d3 36px 50px)}"),
  "70": dict(f="'Shrikhand'", ys=112, card="background:#6b3416", yr="color:#fbefd5;text-shadow:4px 4px 0 #2e1206", tx="#fbefd5", ac="#f2b134",
@@ -26,31 +47,27 @@ T = {  # font, year size, card, year colour/effect, text colour, accent, extra c
  "20": dict(f="'Playfair Display'", ys=104, card="background:rgba(245,236,224,.6);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1.5px solid rgba(255,255,255,.75)", yr="color:#3b2a20;font-style:italic;font-weight:500", tx="#3b2a20", ac="#3b2a20",
             deco='', css=""),
 }
-DS = {"60": "blagi luk", "70": "hipi mekoća", "80": "jako i puno", "90": "tanke pincetom", "00": "Y2K linija", "10": "pune obrve", "20": "laminacija"}
-YEAR = {"60": "60-e", "70": "70-e", "80": "80-e", "90": "90-e", "00": "2000-e", "10": "2010-e", "20": "2020-e"}
 BROW = {"60": "#111", "70": "#f2b134", "80": "#6ff3ff", "90": "#fff", "00": "#3a2a33", "10": "url(#om)", "20": "#4a3326"}
 FONTS = "https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@700&family=Shrikhand&family=Audiowide&family=VT323&family=Fredoka:wght@700&family=Pacifico&family=Playfair+Display:ital,wght@1,500&family=Inter:wght@500;700&display=swap"
-STEP = 380 / 7
+STEP = 380 / len(LAB)
 def scope(css, e):
     return re.sub(r'([^{}]+)\{', lambda m: ','.join(f'#era{e} ' + x.strip() for x in m.group(1).split(',')) + '{', css)
-def svg(e):
-    if e == "20":
-        return f'<svg class="br" viewBox="0 0 300 90" style="filter:drop-shadow(0 0 8px #22e6ff);stroke:{BROW[e]};stroke-width:2.6;stroke-linecap:round;fill:none">{hairs()}</svg>'
-        return f'<svg class="br" viewBox="0 0 300 90" style="stroke:{BROW[e]};stroke-width:2.6;stroke-linecap:round;fill:none">{hairs()}</svg>'
-    e2 = e; e = "80" if e != "20" else e
-    om = ('<defs><linearGradient id="om" x1="0" x2="1"><stop offset="0" stop-color="#8a6a58"/><stop offset=".35" stop-color="#3a2418"/>'
-          '<stop offset="1" stop-color="#1e120c"/></linearGradient></defs>') if e == "10" else ""
-    glow = "filter:drop-shadow(0 0 8px #22e6ff);" if e == "80" else ""
-    stroke = "#3a2418" if e == "10" else BROW[e]
-    return f'<svg class="br" viewBox="0 0 300 90" style="{glow}">{om}<path pathLength="1" fill="{BROW[e]}" stroke="{stroke}" d="{P[e2]}"/></svg>'
+def svg(art):
+    if art is None:
+        return ""
+    if art == "hairs":
+        return f'<svg class="br" viewBox="0 0 300 90" style="filter:drop-shadow(0 0 8px #22e6ff);stroke:{BROW[STYLE]};stroke-width:2.6;stroke-linecap:round;fill:none">{hairs()}</svg>'
+    d = art["d"] if isinstance(art, dict) else P[art]
+    return f'<svg class="br" viewBox="0 0 300 90" style="filter:drop-shadow(0 0 8px #22e6ff);"><path pathLength="1" fill="{BROW[STYLE]}" stroke="{BROW[STYLE]}" d="{d}"/></svg>'
+neon_src = Path(a.neon)
+if not neon_src.exists():
+    neon_src = Path(__file__).resolve().parent / "lt-neon-border_card.html"
+NEON = neon_src.read_text()
 hosts = []
-NEON = open("compositions/lt-neon-border.html").read()
-STYLE = "80"   # the user's house look for chapter cards
-for e in ERAS:
-    T[e] = T[STYLE]; BROW[e] = BROW[STYLE]
-for i, e in enumerate(ERAS):
-    t = dict(T[e]); d = round(END[i] - START[i], 2)
-    if len(YEAR[e]) > 4: t["ys"] = 80          # 2000-e .. 2020-e fit the same card
+for i, p in enumerate(PARTS):
+    e = str(p.get("id", f"p{i + 1}")); art = p.get("art"); fx = p.get("fx", []); mk = p.get("mark", i)
+    t = dict(T[STYLE]); d = round(p["end"] - p["start"], 2)
+    if len(p["label"]) > 4: t["ys"] = 80          # 6-character labels (2000-e) fit the same card
     ruler = "".join(f'<span style="left:{30 + STEP * k:.1f}px">{l}</span>' for k, l in enumerate(LAB))
     css = f"""#sc{{position:absolute;left:{X}px;top:{Y}px;width:{W}px;height:{H}px;transform:scale({SC});transform-origin:0 0}}
 #b{{left:0;top:0;width:{W}px;height:{H}px;border-radius:26px;overflow:hidden;{t['card']};font-family:{t['f']};color:{t['tx']}}}
@@ -61,25 +78,26 @@ for i, e in enumerate(ERAS):
 .ru{{position:absolute;left:0;right:0;top:268px;height:40px;font-family:'Inter';font-weight:700;font-size:26px;color:{t['tx']}}}
 .ru span{{position:absolute;top:8px;width:{STEP:.1f}px;text-align:center;opacity:.38}}
 .ru .ln{{position:absolute;left:30px;right:30px;top:2px;height:2px;background:{t['tx']};opacity:.25}}
-.mk{{position:absolute;top:-3px;left:{30 + STEP * max(i - 1, 0) + STEP / 2 - 6:.1f}px;width:12px;height:12px;border-radius:50%;background:{t['ac']}}}
+.mk{{position:absolute;top:-3px;left:{30 + STEP * max(mk - 1, 0) + STEP / 2 - 6:.1f}px;width:12px;height:12px;border-radius:50%;background:{t['ac']}}}
 {t['css']}"""
     sel = f'"#era{e} '
     anim = [f'tl.fromTo({sel}#b",{{opacity:0,y:-24}},{{opacity:1,y:0,duration:.4,ease:"power3.out"}},0);',
             f'tl.fromTo({sel}.yr",{{opacity:0,y:20}},{{opacity:1,y:0,duration:.4,ease:"back.out(1.8)"}},.12);',
-            f'tl.fromTo({sel}.ds",{{opacity:0}},{{opacity:1,duration:.3}},.3);',
-            f'tl.fromTo({sel}.br {"line" if e == "20" else "path"}",{{strokeDasharray:1,strokeDashoffset:1,fillOpacity:0}},{{strokeDashoffset:0,duration:.6,stagger:{.012 if e == "20" else 0},ease:"sine.inOut"}},.45);',
-            '' if e == "20" else f'tl.to({sel}.br path",{{fillOpacity:1,duration:.3}},.95);',
-            # the ruler: the marker steps from the previous decade to this one
-            f'tl.fromTo({sel}.mk",{{x:0}},{{x:{STEP if i else 0:.1f},duration:.5,ease:"power2.inOut"}},.55);',
-            f'tl.to({sel}.ru span:nth-child({i + 2})",{{opacity:1,duration:.2}},.9);']
-    if e == "00":
+            f'tl.fromTo({sel}.ds",{{opacity:0}},{{opacity:1,duration:.3}},.3);']
+    if art is not None:
+        anim += [f'tl.fromTo({sel}.br {"line" if art == "hairs" else "path"}",{{strokeDasharray:1,strokeDashoffset:1,fillOpacity:0}},{{strokeDashoffset:0,duration:.6,stagger:{.012 if art == "hairs" else 0},ease:"sine.inOut"}},.45);',
+                 '' if art == "hairs" else f'tl.to({sel}.br path",{{fillOpacity:1,duration:.3}},.95);']
+    # the ruler: the marker steps from the previous chapter to this one
+    anim += [f'tl.fromTo({sel}.mk",{{x:0}},{{x:{STEP if mk else 0:.1f},duration:.5,ease:"power2.inOut"}},.55);',
+             f'tl.to({sel}.ru span:nth-child({mk + 2})",{{opacity:1,duration:.2}},.9);']
+    if "shimmer" in fx:
         anim.append(f'for(let t=1.2;t<D-1.2;t+=3.2)tl.fromTo({sel}.sh",{{backgroundPosition:"100% 0"}},{{backgroundPosition:"0% 0",duration:.9,ease:"sine.inOut",immediateRender:false}},t);')
-    if e == "10":
+    if "pop" in fx:
         anim.append(f'tl.fromTo({sel}.dc",{{scale:0}},{{scale:1,duration:.6,ease:"back.out(1.7)"}},1.0);')
-    if e == "90":
+    if "blink" in fx:
         anim.append(f'for(let t=1;t<D-.5;t+=1)tl.to({sel}.dc",{{opacity:.2,duration:.01}},t).to({sel}.dc",{{opacity:1,duration:.01}},t+.5);')
     anim.append(f'tl.to({sel}#b",{{opacity:0,duration:.2}},D-.2);')
-    sh = f'<div class="sh">{YEAR[e]}</div>' if e == "00" else ""
+    sh = f'<div class="sh">{p["label"]}</div>' if "shimmer" in fx else ""
     open(f"compositions/era{e}.html", "w").write(f"""<template>
   <link rel="stylesheet" href="{FONTS}" />
   <style>
@@ -88,19 +106,23 @@ for i, e in enumerate(ERAS):
     {scope(css, e)}
   </style>
   <div id="era{e}" data-composition-id="era{e}" data-width="1080" data-height="1920" data-layout-allow-overflow>
-    <div id="sc"><div id="b" class="clip" data-start="0" data-duration="{d}">{t['deco']}<div class="yr">{YEAR[e]}</div>{sh}<div class="ds">{DS[e]}</div>{svg(e)}<div class="ru"><div class="ln"></div>{ruler}<div class="mk"></div></div></div></div>
+    <div id="sc"><div id="b" class="clip" data-start="0" data-duration="{d}">{t['deco']}<div class="yr">{p["label"]}</div>{sh}<div class="ds">{p["line"]}</div>{svg(art)}<div class="ru"><div class="ln"></div>{ruler}<div class="mk"></div></div></div></div>
   </div>
   <script>
     const D = {d}; const tl = gsap.timeline({{ paused: true }});
-    {chr(10).join('    ' + a for a in anim).strip()}
+    {chr(10).join('    ' + x for x in anim).strip()}
     window.__timelines["era{e}"] = tl;
   </script>
 </template>
 """)
     nb = NEON.replace('"lt-neon-border"', f'"neon{e}"').replace("var DUR = 8.16;", f"var DUR = {d};").replace('data-duration="8.16"', f'data-duration="{d}"')
     open(f"compositions/neon{e}.html", "w").write(nb)
-    hosts.append(f'<div id="hn{e}" data-composition-id="neon{e}" data-composition-src="compositions/neon{e}.html" data-track-kind="graphics" data-start="{START[i]:.2f}" data-duration="{d}" data-track-index="{3 + i % 2}" data-width="1080" data-height="1920"></div>')
-    hosts.append(f'<div id="h{e}" data-composition-id="era{e}" data-composition-src="compositions/era{e}.html" data-track-kind="graphics" data-start="{START[i]:.2f}" data-duration="{d}" data-track-index="{1 + i % 2}" data-width="1080" data-height="1920"></div>')
+    hosts.append(f'<div id="hn{e}" data-composition-id="neon{e}" data-composition-src="compositions/neon{e}.html" data-track-kind="graphics" data-start="{p["start"]:.2f}" data-duration="{d}" data-track-index="{3 + i % 2}" data-width="1080" data-height="1920"></div>')
+    hosts.append(f'<div id="h{e}" data-composition-id="era{e}" data-composition-src="compositions/era{e}.html" data-track-kind="graphics" data-start="{p["start"]:.2f}" data-duration="{d}" data-track-index="{1 + i % 2}" data-width="1080" data-height="1920"></div>')
+    print(f'era{e}: {p["start"]:.2f}-{p["end"]:.2f}  {p["label"]} / {p["line"]}')
 idx = open("index.html").read()
-idx = re.sub(r'(<video id="bg"[^\n]*\n).*?(\n    </div>\n    <script>)', lambda m: m.group(1) + "\n".join("      " + h for h in hosts) + m.group(2), idx, flags=re.S)
-open("index.html", "w").write(idx)
+# everything between the bg video and the root's closing </div> is replaced (also when empty: a fresh project)
+idx2, n = re.subn(r'(<video id="bg"[^\n]*\n).*?(    </div>\n    <script>)', lambda m: m.group(1) + "\n".join("      " + h for h in hosts) + "\n" + m.group(2), idx, flags=re.S)
+if not n:
+    sys.exit('index.html: no <video id="bg"> line followed by "    </div>\\n    <script>" - hosts not written')
+open("index.html", "w").write(idx2)
