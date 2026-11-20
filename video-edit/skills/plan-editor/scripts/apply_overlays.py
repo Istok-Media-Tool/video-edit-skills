@@ -33,7 +33,9 @@ overlays.json (times in seconds on THIS video's timeline, or by phrase):
   insert/image linearly over its range (Ken Burns ~2.5 %/s reads calm);
 - "push": the speaker is kept with the head top 9 % below the frame top,
   measured on the frames of that range (Apple Vision); a push range must not
-  span a hard zoom change - it warns.
+  span a hard zoom change - it warns. z0 == z1 = a hard punch-in for that
+  range. "cx"/"top" (face centre x, head top y in px) skip the measuring -
+  use them to re-render a saved plan identically.
 Edges within 0.24 s of a cut snap onto the cut (no 1-6 frame slivers), all
 edges land on the frame grid.
 
@@ -214,6 +216,9 @@ def main():
     tmp = Path(a.out).with_suffix(".faces")
     tmp.mkdir(exist_ok=True)
     for k, pz in enumerate(pushes):
+        if "cx" in pz and "top" in pz:   # anchor given (a saved plan): reproduce it exactly
+            pz["cx"], pz["top"] = float(pz["cx"]), float(pz["top"])
+            continue
         imgs = []
         for m, t in enumerate(np.linspace(pz["from"] + 0.05, pz["to"] - 0.05, 5)):
             f = tmp / f"p{k:02d}_{m}.png"

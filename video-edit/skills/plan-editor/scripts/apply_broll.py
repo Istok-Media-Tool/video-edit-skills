@@ -23,9 +23,10 @@ Inputs:
   --durations   comma list of this video's clip durations (ffprobe clip_NNN.mp4)
   --lead        seconds the B-roll starts before its first word (default 0.08)
   --tail        seconds it stays after its last word ends (default 0.10)
-  --kenburns    slow push into STILL images, zoom per second (0.025 = the
-                "educational reel" look, 1.0 -> ~1.1x over 4 s); a range's
-                own "kb" wins. Default 0 = still image, as before
+  --kenburns    slow, continuous push into STILL images, zoom per second.
+                Default 0.025 (1.0 -> ~1.1x over 4 s): the user wants EVERY
+                photo B-roll to move, never a static picture (2026-11-20).
+                A range's own "kb" wins; 0 = still image only if asked
 
 Prints where each range landed (and how each word was matched) for checking.
 
@@ -83,7 +84,7 @@ def main():
     for a in ("--broll", "--sentences", "--words", "--durations"):
         ap.add_argument(a, required=True)
     ap.add_argument("--lead", type=float, default=0.08)
-    ap.add_argument("--kenburns", type=float, default=0.0, help="zoom per second on still images")
+    ap.add_argument("--kenburns", type=float, default=0.025, help="zoom per second on still images")
     ap.add_argument("--tail", type=float, default=0.10)
     a = ap.parse_args()
 

@@ -198,6 +198,8 @@ def main():
     ap.add_argument("--title-head", help="top,bottom of the speaker's head (hair to chin, output px) where the title is - "
                     "the Naslov slider never lets the title overlap it")
     ap.add_argument("--wide", help="wide.json {W, H, crop, frames} - shows the Kadar 1,0x mode (one fixed wide frame)")
+    ap.add_argument("--zoom-labels", default="1,0×|1,5×|1,7×|2,0×|2,2×",
+                    help="names of zoom levels 0-4, | separated (a 1080p source: 1,0×|1,2×|1,35×|1,5×|1,7×)")
     ap.add_argument("--takes", help="takes.json from make_take_clips.py - shows the Dublovi mode (browser pane only)")
     a = ap.parse_args()
     sentences = [l.strip() for l in open(a.sentences, encoding="utf-8") if l.strip()]
@@ -232,6 +234,7 @@ def main():
                           for i, c in enumerate(caps)) + "\n")
     html = TEMPLATE.read_text(encoding="utf-8")
     html = html.replace("__SENTENCES__", json.dumps(sentences, ensure_ascii=False))
+    html = html.replace("__ZLABELS__", json.dumps(a.zoom_labels.split("|"), ensure_ascii=False))
     html = html.replace("__PLAN__", json.dumps(plan, ensure_ascii=False))
     html = html.replace("__ZCROPS__", json.dumps(json.load(open(a.zoom_crops)) if a.zoom_crops else None))
     html = html.replace("__WIDE__", json.dumps(json.load(open(a.wide)) if a.wide else None))

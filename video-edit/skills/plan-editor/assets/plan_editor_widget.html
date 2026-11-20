@@ -23,6 +23,7 @@
 #pvw{position:sticky;top:0;z-index:2;background:var(--surface-0);padding:8px 0 12px;gap:18px;align-items:center;border-bottom:0.5px solid var(--border-strong)}
 #pv{height:min(300px,38vh);border-radius:8px;background:#000;display:block}
 #pvw.big #pv{height:min(460px,55vh)}
+#pvw.small #pv{height:min(170px,24vh)}
 #pvbox{position:relative;flex:none}
 #ov{position:absolute;left:0;right:0;text-align:center;pointer-events:none;font-family:Inter,var(--font-sans);font-weight:700;color:#fff;line-height:1.2}
 #ov span,#ovt span{background:#000;display:inline-block}
@@ -89,6 +90,12 @@
 .zcs{display:grid;gap:6px;flex:1;min-width:240px}
 .wdf span{position:absolute;left:4px;top:4px;font-size:11px;line-height:1.2;background:rgba(0,0,0,.6);color:#fff;padding:1px 4px;border-radius:4px}
 .cu{padding:12px 0;border-bottom:0.5px solid var(--border);display:grid;gap:8px}
+.cub{display:grid;grid-template-columns:minmax(160px,260px) minmax(0,1fr);gap:12px;align-items:start}
+.cub figure{margin:0;display:grid;gap:4px;padding:6px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--surface-1)}
+.cub video{width:100%;aspect-ratio:16/9;background:#000;border-radius:6px;display:block;object-fit:cover}
+.cub figcaption{font-size:12px;color:var(--text-secondary)}
+.cuc{display:grid;gap:8px;min-width:0}
+@media (max-width:640px){.cub{grid-template-columns:1fr}}
 .cu.ch{border-left:3px solid var(--border-accent);padding-left:10px}
 .cuh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cuh b{font-size:16px;font-weight:600}
@@ -154,7 +161,7 @@ const A0=__ACCENTS__;
 const MUS=(m=>m?(Array.isArray(m)?m:[m]):[])(__MUSIC__);let MU=MUS[0]||null,MUK=0;
 const AK=["poenta","naglasak","promena"],AKL={poenta:"poenta",naglasak:"naglasak",promena:"promena"};
 const HM="Muzika: klikni reč na kojoj muzika treba da udari. 1× poenta (najjači udarac pesme), 2× naglasak (jak takt), 3× promena (pesma prelazi u novi deo), 4× ukloni. Najjači udarci pesme čuvaju se za ova mesta."+(MU?" Sive ♪ pokazuju gde udarci izabrane pesme sada padaju (♩ nov deo pesme, ✂ spoj u aranžmanu - preslušaj ga)"+(MUS.length>1?"; dugmad A, B, C… pored videa menjaju pesmu (poređane po tome koliko mesta pogađaju), svaka svira od svog najboljeg početka":"")+"; muziku u pregledu pališ i gasiš dugmetom pored videa.":"");
-const L=["1,0×","1,5×","1,7×","2,0×","2,2×"];
+const L=__ZLABELS__;
 const HN="Izaberi gore šta radiš: Zum, Kadar 1,0×, Izmeni tekst, B-roll, Pozicija titla, Naslov, Close-up, Dublovi ili Muzika.";
 const HZ="Zum kadrovi: svaki zum kadar ima svoj okvir. Klizačima ga pomeri levo–desno, gore–dole i promeni veličinu (‹ › = mali korak); levo vidiš kadar kako ga gleda publika, desno ceo izvorni kadar sa okvirom. Pazi da glava ima prostora iznad, a da telefon u ruci ne dodiruje ivicu.";
 const HW="Kadar 1,0×: jedan isti široki kadar za ceo video. Klizačima pomeri okvir levo–desno, gore–dole i promeni širinu (‹ › = mali korak). Okvir je isti na svim kadrovima desno; klik na kadar ga prikaže levo onako kako ga gleda publika.";
@@ -163,7 +170,7 @@ const FR=0.04;
 const HT="Naslov: upiši tekst naslova (novi red = novi red na ekranu), pa klikni reč od koje naslov počinje i reč do koje traje. Pregled na videu pokazuje gde stoji.";
 const HK="Dublovi: rečenice snimljene više puta imaju dublove jedan pored drugog. Pusti ih i klikni „Ovaj je bolji“ ispod onog koji ostaje. Zeleni okvir = dubl koji ide u video.";
 const HP="Pozicija titla: „Svi titlovi“ na vrhu pomera sve ekrane odjednom na istu visinu; ispod svake rečenice pomeraš pojedinačni ekran (levo = više, desno = niže). Pregled na videu pokazuje gde će stajati, da ne prekriva lice.";
-const HV="Zum: levo biraš kadar na početku rečenice. Klik na reč menja kadar od te reči: nema → 1,0× → 1,5× → 1,7× → 2,0× → 2,2× → nema.";
+const HV="Zum: levo biraš kadar na početku rečenice. Klik na reč menja kadar od te reči: nema → "+L.join(" → ")+" → nema.";
 const HE="Ispravi tekst. Novi red = novi red titla na ekranu, prazan red = sledeći ekran titla (broj ekrana mora ostati isti).";
 const HB="B-roll: klikni reč na kojoj snimak ili slika počinje, pa reč do koje traje (može i u sledećoj rečenici). Ispod izaberi fajl (Izaberi), upiši naziv ili putanju, ili opiši šta treba da se prikaže.";
 const ORIG=S0.map((s,i)=>(C[i]&&C[i].length)?C[i].map(x=>x[1]):[s]);
@@ -250,7 +257,7 @@ function showCap(c){if(!M)return;if(!(pv.currentTime>=c.st&&pv.currentTime<c.en)
 function play(i,t){
  if(t===undefined&&PLAYING===i&&!pv.paused){pv.pause();STOP=null;PLAYING=-1;draw();return}
  pv.currentTime=t===undefined?M.clips[i][0]:t;STOP=M.clips[i][1];PLAYING=i;pv.play();draw()}
-function setMode(m){MODE=m;document.getElementById("title").checked=m==="title";document.getElementById("takes").checked=m==="takes";document.getElementById("pos").checked=m==="pos";document.getElementById("pvw").classList.toggle("big",m==="pos");document.getElementById("zoom").checked=m==="zoom";document.getElementById("edit").checked=m==="edit";document.getElementById("broll").checked=m==="broll";document.getElementById("cu").checked=m==="cu";document.getElementById("music").checked=m==="music";document.getElementById("wide").checked=m==="wide";document.getElementById("zc").checked=m==="zc";PEND=null;draw()}
+function setMode(m){MODE=m;document.getElementById("title").checked=m==="title";document.getElementById("takes").checked=m==="takes";document.getElementById("pos").checked=m==="pos";document.getElementById("pvw").classList.toggle("big",m==="pos");document.getElementById("pvw").classList.toggle("small",m==="cu");document.getElementById("zoom").checked=m==="zoom";document.getElementById("edit").checked=m==="edit";document.getElementById("broll").checked=m==="broll";document.getElementById("cu").checked=m==="cu";document.getElementById("music").checked=m==="music";document.getElementById("wide").checked=m==="wide";document.getElementById("zc").checked=m==="zc";PEND=null;draw()}
 function wideFix(){const W=WD0.W,H=WD0.H;
  WD.w=Math.max(Math.round(W/2.4/2)*2,Math.min(W,Math.round(WD.w/2)*2));WD.h=Math.round(WD.w*16/9/2)*2;
  if(WD.h>H){WD.h=H;WD.w=Math.round(H*9/16/2)*2}
@@ -341,6 +348,18 @@ function cuPanel(el){
   const pb=document.createElement("button");pb.innerHTML='<i class="ti ti-player-play" aria-hidden="true"></i> Pogledaj';
   pb.setAttribute("aria-label","Pusti ceo close-up "+nm.textContent);pb.onclick=()=>playSpan(u.st-1.2,u.en+0.8);
   h.append(nm,tm,pb);d.appendChild(h);
+  // the close-up itself, as a small player (like the takes in Dublovi): plays just its own range
+  const body=document.createElement("div");body.className="cub";
+  const fg=document.createElement("figure");
+  const tv=document.createElement("video");tv.className="cuthumb";tv.controls=true;tv.playsInline=true;tv.muted=true;tv.preload="auto";tv.src="closeups/"+c.file;
+  tv.setAttribute("aria-label","Close-up "+nm.textContent);
+  const a0=()=>c.o+(u.st-c.st),a1=()=>c.o+(u.en-c.st);
+  tv.addEventListener("loadedmetadata",()=>{tv.currentTime=a0()+0.04});
+  tv.onplay=()=>{if(M){pv.pause();STOP=null}document.querySelectorAll("video.cuthumb").forEach(o=>{if(o!==tv)o.pause()});
+   if(tv.currentTime<a0()-0.05||tv.currentTime>=a1()-0.05)tv.currentTime=a0()};
+  tv.ontimeupdate=()=>{if(!tv.paused&&tv.currentTime>=a1()){tv.pause();tv.currentTime=a1()-0.04}};
+  const fc=document.createElement("figcaption");fc.textContent="Pusti da vidiš ceo krupni kadar (bez zvuka)";
+  fg.append(tv,fc);const ctl=document.createElement("div");ctl.className="cuc";body.append(fg,ctl);d.appendChild(body);
   const head=()=>{tm.textContent=fmt2(u.st)+" → "+fmt2(u.en)+" · "+(u.en-u.st).toFixed(2).replace(".",",")+" s";
    d.classList.toggle("ch",Math.abs(u.st-c.st)>0.005||Math.abs(u.en-c.en)>0.005)};
   ["st","en"].forEach(e=>{
@@ -358,13 +377,13 @@ function cuPanel(el){
    pl.onclick=()=>e==="st"?playSpan(u.st-1.5,u.st+1.0):playSpan(u.en-1.0,u.en+1.0);
    const lab=()=>{const dd=u[e]-c[e];v.className="v"+(Math.abs(dd)>0.005?" mv":"");
     v.textContent=(sgn(dd)||"kao sad")+" · „"+wordAt(e==="st"?u.st:u.en-FR)+"“";rs.style.visibility=Math.abs(dd)>0.005?"visible":"hidden";head()};
-   const set=(x,sn)=>{x=Math.min(hi(),Math.max(lo(),x));if(sn)x=Math.min(hi(),Math.max(lo(),snap(x)));u[e]=Math.round(x*100)/100;rg.value=u[e];lab();
+   const set=(x,sn)=>{x=Math.min(hi(),Math.max(lo(),x));if(sn)x=Math.min(hi(),Math.max(lo(),snap(x)));u[e]=Math.round(x*100)/100;rg.value=u[e];lab();tv.pause();tv.currentTime=e==="st"?a0()+0.04:a1()-0.04;
     pv.pause();STOP=null;pv.currentTime=e==="st"?u.st:Math.max(0,u.en-FR)};
    rg.oninput=()=>set(+rg.value,true);
    const mk=(t,dx)=>{const b=document.createElement("button");b.textContent=t;b.setAttribute("aria-label",lb.textContent+(dx<0?" frejm ranije":" frejm kasnije"));b.onclick=()=>set(u[e]+dx,false);return b};
    rs.onclick=()=>set(c[e],false);
    lab();r.append(lb,mk("‹",-FR),rg,mk("›",FR),v,pl,rs);
-   d.appendChild(r)});
+   ctl.appendChild(r)});
   el.appendChild(d)})}
 // music preview: the aligned track plays with the video (track time = MU.start + video time);
 // MK = words a strong moment of the track lands on now (grey ♪), so the user sees what the music does

@@ -31,7 +31,7 @@ project.json (paths relative to the json file):
                                    (the reply's WIDE_JSON from "Kadar 1,0x" wins)
     "overlays": "overlays.json"    optional: push-ins, second-camera inserts, Ken Burns
                                    stills, end shot - apply_overlays.py (STYLE_educational.md)
-    "kenburns": 0.025              optional: slow push into B-roll stills (apply_broll.py)
+    "kenburns": 0.025              optional: push speed for B-roll stills (apply_broll.py; default 0.025, always on)
     "alternate": true              optional: different shot size on every cut
                                    (build_zoom_selections.py --alternate)
   }
@@ -208,7 +208,7 @@ def main():
         br = subprocess.run([sys.executable, PE / "apply_broll.py", zoom_mp4, work / "broll.mp4",
                              "--broll", work / "broll.json", "--sentences", work / "sentences.txt",
                              "--words", words, "--durations", ",".join(str(d) for d in new_durs)]
-                            + (["--kenburns", str(P["kenburns"])] if P.get("kenburns") else []),
+                            + (["--kenburns", str(P["kenburns"])] if "kenburns" in P else []),
                             stderr=subprocess.PIPE, text=True, check=True).stderr
         print(br, file=sys.stderr, end="")
         for m in re.finditer(r"B\d+: ([\d.]+)s -> ([\d.]+)s", br):

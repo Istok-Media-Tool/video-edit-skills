@@ -23,6 +23,8 @@ Every rule here came from the user rejecting something:
   shot, not the raw frame.
 - Captions must never move between screens, and must leave a brief empty
   moment between screens so the eye notices the change.
+- A photo used as B-roll must never sit still: it always gets a slow,
+  continuous zoom-in (apply_broll.py does it by default, 2026-11-20).
 - Any caption screen can be moved up or down so it never covers the face.
   The user does not have to find them: `check_caption_overlap.py`
   (subtitle skill, Step 6b) checks every screen on the real picture and
@@ -81,8 +83,14 @@ redesign, restyle or replace it with a different page.
   of that segment, 540x960 base64) and pass `--zoom-crops zcrops.json`.
   The reply's `ZOOMCROPS_JSON` (only moved frames) replaces those crops in
   the selections file (render_from_plan does it right after building it).
+- Zoom level names (added 2026-11-18): `make_plan_widget.py --zoom-labels "1,0×|1,3×|1,4×|1,5×|1,7×"`
+  renames levels 0-4 for a source that can't take 2x (1080p horizontal course cameras); default
+  stays 1,0×|1,5×|1,7×|2,0×|2,2×.
 - Dublovi: takes side by side, left / right, green frame on the one in
   the cut, "Ovaj je bolji" under each.
+- Close-up looks like Dublovi (the user, 2026-11-18): the main player shrinks (`#pvw.small`)
+  and every card has its close-up as a small playable video (muted, plays only its own
+  range, follows the sliders) on the left, sliders on the right.
 - Close-up (added 2026-11-04, approved for every video with inserts): one
   card per close-up, Početak / Kraj sliders with ‹ › one-frame buttons, the
   word the edge lands on, ▶ per transition, "Pogledaj" for the whole one;
@@ -351,7 +359,11 @@ source, cuts, positions, pre_filter, ass, words, durations - the files from
    `cut_and_concat.sh`;
 3. B-roll on the zoom render (`apply_broll.py`: from-word start - 0.08s to
    to-word end + 0.10s, media covers the frame, short video holds its last
-   frame, speaker audio stays). It STOPS if a `media` isn't a real file:
+   frame, speaker audio stays; every PHOTO gets a slow, continuous
+   zoom-in for its whole range - 2.5 %/s, 1.0 -> ~1.1x over 4 s - never a
+   static picture: the user's rule, 2026-11-20. This is the default; a
+   range's own `"kb"` or project.json `"kenburns"` changes the speed, and
+   0 (no move) only when the user asks for a still photo). It STOPS if a `media` isn't a real file:
    find a bare name with
    `find /Volumes ~/Movies ~/Desktop ~/Downloads ~/Pictures -name '<name>' 2>/dev/null`
    (ask if several match), ask for / source a described one, put the path
@@ -366,8 +378,7 @@ source, cuts, positions, pre_filter, ass, words, durations - the files from
    `--allow-overlap` on your own; burned with ffmpeg-full;
    (between B-roll and captions: `"overlays"` in project.json ->
    apply_overlays.py - push-ins, close-up camera, Ken Burns stills, end
-   shot; `"kenburns": 0.025` gives B-roll stills a slow push, see
-   STYLE_educational.md)
+   shot; B-roll stills always get a slow push, see below)
 5. `work/vN/sheet.jpg`: frames before/after each zoom change, inside each
    B-roll range and on each moved caption. LOOK at it before delivering.
 6. then run `$SKILLS/basic/scripts/check_video.py out_vN.mp4
