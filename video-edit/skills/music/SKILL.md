@@ -239,6 +239,15 @@ on the output, then listen to the last word, the final chord and the ✂ seams.
 A negative `--track-start` delays the track (an edit whose regions landed
 early).
 
+**Master: the user's Broadcast multiband.** Before the -14 LUFS pass,
+`mix_bed.py` runs the whole mix through the user's Premiere Multiband
+Compressor "Broadcast" preset, a bit stronger (default `--master broadcast`;
+`--master none` skips it). Chosen on 2026-11-10 after an A/B: the exact
+preset sounded no different from a plain loudness pass, a much heavier
+version was "prejaka"; this one (thresholds ~6 dB lower, ratios +0.5) is
+the keeper. The thresholds are absolute, so the mix is set to -23 LUFS
+(a dry voice level, like a Premiere master) first.
+
 ## Doing it by hand (no accents, or a quick bed)
 
 - Measure the voice: `ffmpeg -nostdin -i video.mp4 -af volumedetect -f null -`.
@@ -246,6 +255,25 @@ early).
   default `normalize=1` scales the SUM down - it pulled the voice's peak
   down 6 dB (-10.6 → -16.5 dB) while the music was already 24 dB under.
 - Verify: the output's `max_volume` within ~1 dB of the voice-only one.
+- Master by hand (the same as `mix_bed.py --master broadcast`): set the
+  premix to -23 LUFS, then one `-filter_complex`:
+  ```
+  [0:a]volume=<to -23 LUFS>dB,acrossover=split=137 1147 6910:order=4th[b1][b2][b3][b4];
+  [b1]acompressor=threshold=-26dB:ratio=3.5:attack=1:release=100:makeup=1.122:detection=peak[c1];
+  [b2]acompressor=threshold=-23.5dB:ratio=2.5:attack=1:release=100:makeup=1:detection=peak[c2];
+  [b3]acompressor=threshold=-30.5dB:ratio=2.5:attack=1:release=100:makeup=1:detection=peak[c3];
+  [b4]acompressor=threshold=-31dB:ratio=3.5:attack=1:release=100:makeup=1.413:detection=peak[c4];
+  [c1][c2][c3][c4]amix=inputs=4:normalize=0,volume=<X>dB,
+  alimiter=limit=-1.2dB:attack=4:release=500:level=disabled[a]
+  ```
+  Tune X (about +13 dB from -23 LUFS) until the AAC file measures ~-14 LUFS
+  with true peak ≤ -1 dBTP. **Gotcha:** `alimiter` without
+  `level=disabled` auto-normalizes its output to 0 dBFS (true peak +0.0) -
+  the -1 dBTP limit is silently lost. In zsh write `${VAR}[label]`, not
+  `$VAR[label]` (read as an array subscript).
+  For reference, the exact Premiere preset: thresholds -20.2 / -17.6 /
+  -24.8 / -25 dB, ratios 3 / 2 / 2 / 3, gains +1 / 0 / 0 / +3 dB, attack
+  1 ms, release 100 ms, limiter -10 dB with -0.1 dB margin.
 - Start the window on a downbeat (track_map), never mid-bar; a video that
   opens calm and climbs wants a window that starts low and reaches a hit
   near the last sentence.

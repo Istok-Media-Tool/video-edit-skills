@@ -17,6 +17,11 @@ Music bed + ending in the style of the user's reference reels (vodič stila,
   gone (better: a real tail from tighten_cuts.py --tail).
 - optional sting (--sting file.wav): an impact/whoosh at --sting-at seconds
   (default: right after that silence), at -5 dBFS peak like the references
+- master (default --master broadcast): the whole mix goes through the user's
+  Premiere "Broadcast" multiband, a bit stronger (user's choice 2026-11-10):
+  bands at 137 / 1147 / 6910 Hz, each compressed on its own (attack 1 ms,
+  release 100 ms), the mix first set to -23 LUFS so the thresholds land
+  where they do on a dry Premiere master. --master none skips it.
 - the mix is brought to -14 LUFS (Instagram) with one gain, peaks limited to -2 dB; the encoded
   file's true peak is measured and the limit lowered until it is <= -1 dBFS (AAC added 2.2 dB on a
   plosive in the Tesla reel)
@@ -34,13 +39,14 @@ Step 4), only the final loudness pass scales everything together.
 Usage:
   mix_bed.py video.mp4 track.mp3 out.mp4 --words words.json
       [--track-start 12.0] [--under 22] [--lift 8] [--fade 1.2] [--gap 0.5]
-      [--sting hit.wav] [--sting-at 101.3] [--sfx sfx.json]
+      [--sting hit.wav] [--sting-at 101.3] [--sfx sfx.json] [--master broadcast|none]
 
 --words: word_times.py / stt.py output for THIS video (last word end = where
 the speech stops). Without it pass --last-word <sec>.
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -48,6 +54,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from venc import venc
+
+# The user's master: Premiere's Multiband Compressor "Broadcast" preset with
+# ~6 dB lower thresholds and +0.5 ratio (the exact preset sounded too close to
+# a plain loudness pass; a much heavier one was "prejaka"). Preset values for
+# reference: thresholds -20.2/-17.6/-24.8/-25 dB, ratios 3/2/2/3, gains
+# +1/0/0/+3 dB, limiter -10 dB / margin -0.1 dB. Thresholds are absolute, so
+# the mix is set to -23 LUFS (a dry voice) before it.
+BROADCAST_IN_LUFS = -23.0
+BROADCAST = (
+    "acrossover=split=137 1147 6910:order=4th[b1][b2][b3][b4];"
+    "[b1]acompressor=threshold=-26dB:ratio=3.5:attack=1:release=100:makeup=1.122:detection=peak[c1];"
+    "[b2]acompressor=threshold=-23.5dB:ratio=2.5:attack=1:release=100:makeup=1:detection=peak[c2];"
+    "[b3]acompressor=threshold=-30.5dB:ratio=2.5:attack=1:release=100:makeup=1:detection=peak[c3];"
+    "[b4]acompressor=threshold=-31dB:ratio=3.5:attack=1:release=100:makeup=1.413:detection=peak[c4];"
+    "[c1][c2][c3][c4]amix=inputs=4:normalize=0")
 
 
 def probe_dur(path):
@@ -105,6 +126,8 @@ def main():
     ap.add_argument("--sting")
     ap.add_argument("--sting-at", type=float)
     ap.add_argument("--sfx", help="json list of sound effects: file, at, align (start|end), peak_db")
+    ap.add_argument("--master", choices=["broadcast", "none"], default="broadcast",
+                    help="multiband master before the loudness pass (default: the user's Broadcast)")
     a = ap.parse_args()
     a.lift_auto = a.lift is None
     if a.lift is None:
@@ -194,6 +217,16 @@ def main():
                              capture_output=True, text=True).stderr
         return float(re.findall(r"I:\s+(-?[\d.]+) LUFS", err)[-1])
 
+    if a.master == "broadcast":
+        pre = BROADCAST_IN_LUFS - lufs_of("")
+        mst = a.out + ".master.wav"
+        subprocess.run(["ffmpeg", "-nostdin", "-y", "-loglevel", "error", "-i", tmp, "-filter_complex",
+                        f"[0:a]volume={pre:.2f}dB,{BROADCAST}[a]", "-map", "[a]", "-c:a", "pcm_s24le", mst],
+                       check=True)
+        os.replace(mst, tmp)
+        print(f"master: Broadcast multiband (mix set {pre:+.1f} dB to {BROADCAST_IN_LUFS:.0f} LUFS first)",
+              file=sys.stderr)
+
     # AAC cuts everything above ~16 kHz, which raises the peaks of noisy sounds
     # (a whoosh sting) after the limiter - so cut it first, then limit
     limit = "lowpass=f=16000,alimiter=limit=0.79:level=false"   # -2 dBFS
@@ -219,7 +252,6 @@ def main():
             break
         print(f"true peak {tp:+.1f} dBFS after AAC - limiting at {lim_db - (tp + 1.2):.1f} dBFS", file=sys.stderr)
         lim_db -= tp + 1.2
-    import os
     os.remove(tmp)
     print(f"loudness gain {gain:+.1f} dB -> -14 LUFS", file=sys.stderr)
     print(f"-> {a.out}", file=sys.stderr)
