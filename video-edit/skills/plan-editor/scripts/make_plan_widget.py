@@ -62,7 +62,7 @@ word). Only works in the browser-pane version (serve_plan_editor.py) - the
 inline chat widget can't carry media, so don't pass these for show_widget.
 
 Usage:
-  make_plan_widget.py sentences.txt [plan.json] [--ass captions.ass --durations 6.28,6.08,...] [--broll broll.json] [--accents accents.json] [--music music_preview.json] [--takes takes.json] [--closeups closeups.json] [--media cut.mp4 --words words.json] > widget.html
+  make_plan_widget.py sentences.txt [plan.json] [--ass captions.ass --durations 6.28,6.08,...] [--broll broll.json] [--accents accents.json] [--music music_preview.json] [--takes takes.json] [--closeups closeups.json] [--media cut.mp4 --words words.json] [--lang en] > widget.html
 """
 import argparse
 import json
@@ -70,6 +70,9 @@ import sys
 from pathlib import Path
 
 TEMPLATE = Path(__file__).resolve().parent.parent / "assets" / "plan_editor_widget.html"
+# --lang en: the same editor with English text (reply keys and JSON values are identical)
+TEMPLATES = {"sr": TEMPLATE, "en": TEMPLATE.with_name("plan_editor_widget_en.html")}
+ZOOM_LABELS = {"sr": "1,0×|1,5×|1,7×|2,0×|2,2×", "en": "1.0×|1.5×|1.7×|2.0×|2.2×"}
 
 
 def ass_time(t):
@@ -198,10 +201,15 @@ def main():
     ap.add_argument("--title-head", help="top,bottom of the speaker's head (hair to chin, output px) where the title is - "
                     "the Naslov slider never lets the title overlap it")
     ap.add_argument("--wide", help="wide.json {W, H, crop, frames} - shows the Kadar 1,0x mode (one fixed wide frame)")
-    ap.add_argument("--zoom-labels", default="1,0×|1,5×|1,7×|2,0×|2,2×",
-                    help="names of zoom levels 0-4, | separated (a 1080p source: 1,0×|1,2×|1,35×|1,5×|1,7×)")
+    ap.add_argument("--zoom-labels",
+                    help="names of zoom levels 0-4, | separated (a 1080p source: 1,0×|1,2×|1,35×|1,5×|1,7×); "
+                    "default 1,0×|1,5×|1,7×|2,0×|2,2× (--lang en: 1.0×|1.5×|1.7×|2.0×|2.2×)")
+    ap.add_argument("--lang", choices=("sr", "en"), default="sr",
+                    help="language of the editor's text (default sr); en uses assets/plan_editor_widget_en.html")
     ap.add_argument("--takes", help="takes.json from make_take_clips.py - shows the Dublovi mode (browser pane only)")
     a = ap.parse_args()
+    if a.zoom_labels is None:
+        a.zoom_labels = ZOOM_LABELS[a.lang]
     sentences = [l.strip() for l in open(a.sentences, encoding="utf-8") if l.strip()]
     if a.plan:
         plan = json.load(open(a.plan, encoding="utf-8"))
@@ -232,7 +240,7 @@ def main():
             open(a.write_sentences, "w", encoding="utf-8").write(
                 "\n".join(" ".join(" ".join(t for _, t, *_ in c).split()) if c else sentences[i]
                           for i, c in enumerate(caps)) + "\n")
-    html = TEMPLATE.read_text(encoding="utf-8")
+    html = TEMPLATES[a.lang].read_text(encoding="utf-8")
     html = html.replace("__SENTENCES__", json.dumps(sentences, ensure_ascii=False))
     html = html.replace("__ZLABELS__", json.dumps(a.zoom_labels.split("|"), ensure_ascii=False))
     html = html.replace("__PLAN__", json.dumps(plan, ensure_ascii=False))

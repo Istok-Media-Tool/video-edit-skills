@@ -22,6 +22,8 @@ Inputs:
                 several for the A / B / C switch of rank_tracks.py)
   --reply       where to write the sent plan (default: plan_reply.txt next to widget)
   --port        default 8765
+  --lang        sr (default) or en - language of the page shell's own notes; use
+                en with a widget made by make_plan_widget.py --lang en
 
 Start it through the browser pane (preview_start with a .claude/launch.json
 entry: runtimeExecutable python3, runtimeArgs [this script, ...], port), not
@@ -33,7 +35,7 @@ import re
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-SHELL = """<!doctype html><html lang="sr"><head><meta charset="utf-8">
+SHELL = """<!doctype html><html lang="__LANG__"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Plan editor</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -53,8 +55,8 @@ button:hover{background:var(--surface-1)} select:disabled{opacity:.55;cursor:def
 </style>
 <script>
 function sendPrompt(t){fetch("/plan",{method:"POST",headers:{"Content-Type":"text/plain; charset=utf-8"},body:t})
- .then(r=>{if(!r.ok)throw 0;document.getElementById("sent").textContent="Plan je poslat. Napiši u četu „poslao sam“."})
- .catch(()=>{document.getElementById("sent").textContent="";document.getElementById("senderr").textContent="Slanje nije uspelo. Javi mi u četu."})}
+ .then(r=>{if(!r.ok)throw 0;document.getElementById("sent").textContent="__SENT__"})
+ .catch(()=>{document.getElementById("sent").textContent="";document.getElementById("senderr").textContent="__FAILED__"})}
 // a stale "poslat" note must not make a later, unsent change look sent
 document.addEventListener("click",e=>{if(!e.target.closest("#send"))document.getElementById("sent").textContent=""},true);
 document.addEventListener("input",()=>{document.getElementById("sent").textContent=""},true);
@@ -62,6 +64,14 @@ document.addEventListener("input",()=>{document.getElementById("sent").textConte
 __WIDGET__
 <div id="sent"></div>
 </body></html>"""
+
+# the shell's own text, per --lang (the widget brings its own)
+SHELL_TEXT = {
+    "sr": {"__LANG__": "sr", "__SENT__": "Plan je poslat. Napiši u četu „poslao sam“.",
+           "__FAILED__": "Slanje nije uspelo. Javi mi u četu."},
+    "en": {"__LANG__": "en", "__SENT__": "Plan sent. Type “sent” in the chat.",
+           "__FAILED__": "Sending failed. Tell me in the chat."},
+}
 
 
 def main():
@@ -73,8 +83,12 @@ def main():
     ap.add_argument("--music-file", nargs="+")
     ap.add_argument("--reply")
     ap.add_argument("--port", type=int, default=8765)
+    ap.add_argument("--lang", choices=("sr", "en"), default="sr", help="language of the page shell's text (default sr)")
     a = ap.parse_args()
-    page = SHELL.replace("__WIDGET__", Path(a.widget).read_text(encoding="utf-8")).encode("utf-8")
+    shell = SHELL
+    for k, v in SHELL_TEXT[a.lang].items():
+        shell = shell.replace(k, v)
+    page = shell.replace("__WIDGET__", Path(a.widget).read_text(encoding="utf-8")).encode("utf-8")
     media = Path(a.media).resolve()
     takes_dir = Path(a.takes_dir).resolve() if a.takes_dir else None
     cu_dir = Path(a.closeups_dir).resolve() if a.closeups_dir else None

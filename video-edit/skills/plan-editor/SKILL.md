@@ -286,6 +286,18 @@ make_plan_widget.py ... --media base_nocu.mp4 --closeups editor/closeups/closeup
 serve_plan_editor.py editor/widget.html --media base_nocu.mp4 --closeups-dir editor/closeups ...
 ```
 
+Inserts made with `overlays.json` (apply_overlays.py, the educational look) ARE close-ups too -
+always give the editor them (the user, 2026-11-23: "ovaj video ima close-up snimke, zašto mi
+ne daješ da upravljam"): `apply_overlays.py video overlays.json /dev/null --words ... --cuts ...
+--durations ... --resolve-only resolved.json` writes where each insert lands; turn its inserts
+into closeups.txt (name, from, to, in) and render the media with an overlays.json without
+"insert". Open EVERY mode that has material: close-ups, Zoom frames (zcrops.json from the
+selections), Takes (from the take map) - never only the plan and captions.
+
+English UI: `make_plan_widget.py --lang en` + `serve_plan_editor.py --lang en`
+(assets/plan_editor_widget_en.html; reply keys unchanged). This user asked for English on
+2026-11-23.
+
 The reply carries `CLOSEUPS_JSON` (all close-ups, new start/end, `off`
 moved with the start). `apply_closeups.py plan_reply.txt old.txt new.txt
 edges.txt` writes the new closeups file (+ edges for check_video.py); then

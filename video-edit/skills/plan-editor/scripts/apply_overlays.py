@@ -137,6 +137,8 @@ def main():
     ap.add_argument("--cuts", help="source<TAB>start<TAB>... per clip of the cut (for synced inserts)")
     ap.add_argument("--durations", help="real clip durations: file (one per line) or comma list")
     ap.add_argument("--snap", type=float, default=0.24)
+    ap.add_argument("--resolve-only", metavar="OUT_JSON",
+                    help="only write where each insert / image / push lands (seconds, source 'in') and exit")
     a = ap.parse_args()
 
     W, H, fps = probe(a.video)
@@ -211,6 +213,13 @@ def main():
         if q["from"] < p["to"] - 1e-6:
             sys.exit(f"overlays overlap: {p['from']:.2f}-{p['to']:.2f} and {q['from']:.2f}-{q['to']:.2f}")
     pushes = [place(dict(it)) for it in O.get("push", [])]
+    if a.resolve_only:  # where every overlay lands (for the editor's Close-up mode), no render
+        keep = ("kind", "from", "to", "file", "in", "z0", "z1", "phrase", "until", "sync")
+        json.dump({"overlays": [{k: o[k] for k in keep if k in o} for o in over],
+                   "push": [{k: p[k] for k in ("from", "to", "z0", "z1") if k in p} for p in pushes]},
+                  open(a.resolve_only, "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+        print(f"-> {a.resolve_only} ({len(over)} overlays, {len(pushes)} push)", file=sys.stderr)
+        return
 
     # head anchor for every push: median face over 5 frames of the range
     tmp = Path(a.out).with_suffix(".faces")
