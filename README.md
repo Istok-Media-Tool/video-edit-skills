@@ -69,6 +69,7 @@ Without a key everything still works, only slower, through local
 
 | Skill | What it does |
 |---|---|
+| `istok` | **the whole edit in one go** - say "apply the istok skill" (or "primeni istok skill") and Claude runs every skill below in order, with one editor round where you decide everything |
 | `basic` | cuts a raw take by the script (transcription + silence detection), picks takes with you, tight pacing, checks every render |
 | `plan-editor` | interactive editor in the browser: zoom by word, caption fixes, B-roll, close-up sliders, takes side by side, title, music places |
 | `zoom` | content-driven punch-in zoom, centred on the face, never cutting off what you show |
@@ -90,7 +91,10 @@ The plan editor is in English. For Serbian, put `{"ui_language": "sr"}` in
 
 ## How to use it
 
-Just talk to Claude, in any language, for example:
+Just talk to Claude, in any language. The fastest way: give it the raw
+video and the script and say **"apply the istok skill"** - it does the
+whole edit, step by step, and asks you only what is yours to decide. Or ask
+for one step at a time:
 
 - "I recorded the video in one take, cut it by the script" (attach the video and script)
 - "Open the editor", "add zoom", "add captions", "put B-roll here"
