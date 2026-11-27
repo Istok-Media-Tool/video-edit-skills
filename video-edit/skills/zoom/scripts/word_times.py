@@ -8,7 +8,7 @@ plan will be applied to - e.g. a plain cut or a previous zoom render - so the
 word times line up with that render's clip boundaries.
 
 Usage:
-  word_times.py cut_video.mp4 words.json [--language sr] [--engine auto|local] [--terms "Masterbox"]
+  word_times.py cut_video.mp4 words.json [--language en] [--engine auto|local] [--terms "Masterbox"]
 
 Engine (stt.py): ElevenLabs Scribe v2 by default, then Groq Whisper, then local
 Whisper - one request with word timestamps, a second or two for a reel. A cut
@@ -31,11 +31,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("video")
     ap.add_argument("out")
-    ap.add_argument("--language", default="sr")
+    ap.add_argument("--language", default="", help="ISO code (en, sr, de...); default: detect")
     ap.add_argument("--engine", choices=["auto", "local"], default="auto")
     ap.add_argument("--model", default="medium", help="local whisper model (fallback only)")
     ap.add_argument("--terms", default="", help="comma-separated names/terms spelled as they should be")
     a = ap.parse_args()
+    LANG = stt.groq_stt.lang_arg(a.language)   # None = detect
     words = None
     with tempfile.TemporaryDirectory() as d:
         wav = os.path.join(d, "a.flac")
@@ -45,7 +46,7 @@ def main():
             engines.remove("groq")   # over Groq's 25 MB upload limit
         if engines:
             try:
-                r = stt.transcribe(wav, a.language, [t.strip() for t in a.terms.split(",") if t.strip()],
+                r = stt.transcribe(wav, LANG, [t.strip() for t in a.terms.split(",") if t.strip()],
                                    words=True, engines=engines)
                 words = [[w["word"], round(w["start"], 2), round(w["end"], 2)] for w in r["words"]]
                 print(f"engine: {r['engine']}", file=sys.stderr)
@@ -54,7 +55,7 @@ def main():
         if words is None:
             import whisper
             r = whisper.load_model(a.model).transcribe(
-                wav, language=a.language, word_timestamps=True,
+                wav, language=LANG, word_timestamps=True,
                 condition_on_previous_text=False, temperature=0)
             words = [[w["word"].strip(), round(float(w["start"]), 2), round(float(w["end"]), 2)]
                      for s in r["segments"] for w in s["words"]]

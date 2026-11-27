@@ -22,18 +22,31 @@ Inputs:
                 several for the A / B / C switch of rank_tracks.py)
   --reply       where to write the sent plan (default: plan_reply.txt next to widget)
   --port        default 8765
-  --lang        sr (default) or en - language of the page shell's own notes; use
-                en with a widget made by make_plan_widget.py --lang en
+  --lang        sr or en (default: ui_language in ~/.config/video-edit/settings.json, else en); use
+                the same language as the widget (make_plan_widget.py --lang)
 
 Start it through the browser pane (preview_start with a .claude/launch.json
 entry: runtimeExecutable python3, runtimeArgs [this script, ...], port), not
 in a plain shell, so the user sees the page.
 """
+import json
 import argparse
 import os
 import re
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+def default_lang():
+    """Editor language: VIDEO_EDIT_LANG, else "ui_language" in
+    ~/.config/video-edit/settings.json, else English."""
+    v = os.environ.get("VIDEO_EDIT_LANG", "").strip().lower()
+    if not v:
+        try:
+            v = str(json.load(open(os.path.expanduser("~/.config/video-edit/settings.json"))).get("ui_language", "")).lower()
+        except (OSError, ValueError):
+            v = ""
+    return v if v in ("sr", "en") else "en"
+
 
 SHELL = """<!doctype html><html lang="__LANG__"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -83,7 +96,8 @@ def main():
     ap.add_argument("--music-file", nargs="+")
     ap.add_argument("--reply")
     ap.add_argument("--port", type=int, default=8765)
-    ap.add_argument("--lang", choices=("sr", "en"), default="sr", help="language of the page shell's text (default sr)")
+    ap.add_argument("--lang", choices=("sr", "en"), default=default_lang(),
+                    help="language of the page shell's text (default: as make_plan_widget.py)")
     a = ap.parse_args()
     shell = SHELL
     for k, v in SHELL_TEXT[a.lang].items():

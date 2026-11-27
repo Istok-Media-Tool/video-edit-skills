@@ -57,7 +57,7 @@ HOME = Path.home() / ".claude" / "skills"
 ZOOM = HOME / "zoom" / "scripts"
 PE = HOME / "plan-editor" / "scripts"
 SUB = HOME / "subtitle" / "scripts"
-FFMPEG_FULL = "/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg"
+FFMPEG_FULL = next((p for p in ("/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg", "/usr/local/opt/ffmpeg-full/bin/ffmpeg") if os.path.exists(p)), "ffmpeg")  # keg-only, has libass
 GAP = 0.12  # empty screen between captions - the user asked for it
 
 

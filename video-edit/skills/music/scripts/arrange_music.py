@@ -111,8 +111,8 @@ def events(M):
     for i in hits:
         jump = dbs[i] - dbs[i - 1]
         s = min(1.5, jump / 6) * (0.5 + 0.5 * after(i))
-        add("poenta", i, s, f"udarac +{jump:.0f} dB")
-        add("promena", i, 0.7 * s, f"udarac +{jump:.0f} dB")
+        add("poenta", i, s, f"hit +{jump:.0f} dB")
+        add("promena", i, 0.7 * s, f"hit +{jump:.0f} dB")
     secs = M["sections"]
     for p, sct in zip(secs, secs[1:]):
         i = idx(sct["start"])
@@ -122,18 +122,18 @@ def events(M):
         s = 0.5 + (diff / 8 if diff > 0 else min(-diff, 8) / 8 * 0.6) + (0.3 if i in hits else 0)
         if sct["db"] < np.median(dbs) - 12:
             s *= 0.4
-        add("promena", i, s, f"nov deo pesme ({diff:+.0f} dB)")
+        add("promena", i, s, f"new section ({diff:+.0f} dB)")
         if diff > 2:
-            add("poenta", i, 0.6 * s, f"nov, glasniji deo ({diff:+.0f} dB)")
+            add("poenta", i, 0.6 * s, f"new, louder section ({diff:+.0f} dB)")
     for b in M.get("bass", []):
         i = idx(b["t"])
-        add("promena", i, 0.6 if b["kind"] == "in" else 0.5, f"bas {'ulazi' if b['kind'] == 'in' else 'izlazi'}")
+        add("promena", i, 0.6 if b["kind"] == "in" else 0.5, f"bass {'enters' if b['kind'] == 'in' else 'drops out'}")
         if b["kind"] == "in":
-            add("poenta", i, 0.5, "bas ulazi")
+            add("poenta", i, 0.5, "bass enters")
     # always feasible: any loud bar start, weak (the report then suggests a sound effect)
     for i in range(1, nb - 1):
         for k in ev:
-            add(k, i, 0.05 + 0.1 * loud[i], "takt")
+            add(k, i, 0.05 + 0.1 * loud[i], "bar")
     hit_strength = {i: min(1.5, (dbs[i] - dbs[i - 1]) / 6) for i in hits}
     return ev, hit_strength, loud
 
@@ -171,8 +171,8 @@ def plan(M, acc, vlen, a, avoid=None):
         i_c = int(np.searchsorted(T[:nb], cl["t"] + 1e-6) - 1)
         off = cl["t"] - T[i_c]
         ring = min(M["duration"], cl["t"] + cl["ring"] + 0.3) - T[i_c]
-        close = {"t": a.close_at - off + LEAD, "kind": "kraj", "word": "kraj pesme", "bar": i_c, "ring": ring,
-                 "close_at": a.close_at, "what": cl.get("what", "kraj"), "strength": cl["strength"]}
+        close = {"t": a.close_at - off + LEAD, "kind": "kraj", "word": "end of track", "bar": i_c, "ring": ring,
+                 "close_at": a.close_at, "what": cl.get("what", "ending"), "strength": cl["strength"]}
         usable[i_c] = True
         while anchors and anchors[-1]["t"] > close["t"] - B * 0.9:
             dropped.append(anchors.pop())
@@ -354,21 +354,21 @@ def plan(M, acc, vlen, a, avoid=None):
         tau = x["t"] - LEAD
         d = float(obeats[np.argmin(np.abs(obeats - tau))] - tau) if len(obeats) else None
         landed.append({"word": x["word"], "kind": x["kind"], "t": x["t"],
-                       "lands": "otkucaj" if d is not None and abs(d) <= 0.07 else "ništa",
+                       "lands": "beat" if d is not None and abs(d) <= 0.07 else "nothing",
                        "strength": 0.5 if d is not None and abs(d) <= 0.07 else 0,
                        "error_ms": None if d is None else round(d * 1000)})
     sfx = []
     for L_ in landed:
         if L_["kind"] in KIND_W and L_["strength"] < 0.45:
-            sfx.append({"at": round(L_["t"] - LEAD, 3), "align": "peak", "kind": "impact", "why": f"„{L_['word']}“: pesma ovde ima samo {L_['lands']}"})
-        if L_["kind"] == "naglasak" and L_["lands"] == "ništa":
-            sfx.append({"at": round(L_["t"] - LEAD, 3), "align": "peak", "kind": "hit", "why": f"„{L_['word']}“: nijedan otkucaj ne pada na reč"})
+            sfx.append({"at": round(L_["t"] - LEAD, 3), "align": "peak", "kind": "impact", "why": f"'{L_['word']}': the track only has a {L_['lands']} here"})
+        if L_["kind"] == "naglasak" and L_["lands"] == "nothing":
+            sfx.append({"at": round(L_["t"] - LEAD, 3), "align": "peak", "kind": "hit", "why": f"'{L_['word']}': no beat falls on the word"})
     builds = {round(b["hit"], 2) for b in M.get("builds", [])}
     for L_ in landed:
         if L_["kind"] == "poenta" and L_.get("src_t") is not None and round(L_["src_t"], 2) not in builds \
                 and L_["strength"] >= 0.45:
             sfx.append({"at": round(L_["t"] - LEAD, 3), "align": "peak", "kind": "riser",
-                        "why": f"„{L_['word']}“: udarac bez zaleta u pesmi"})
+                        "why": f"'{L_['word']}': a hit with no build-up in the track"})
     wasted = [t for t in ohits if 0 <= t < vlen and not any(abs(t - (x["t"] - LEAD)) < 0.25 for x in anchors)]
     stretch_max = max((abs(p["ratio"] - 1) for p in out), default=0)
     score = float(-cost[end])
@@ -479,7 +479,7 @@ def main():
         if P is None:
             break
         if P["stretch_max"] > a.max_stretch:
-            P["note"] = f"istezanje {P['stretch_max'] * 100:.1f} % - preko granice, preslušaj"
+            P["note"] = f"stretch {P['stretch_max'] * 100:.1f} % - over the limit, listen"
         key = tuple(P["used"])
         if any(tuple(q["used"]) == key and q["joins"] == P["joins"] for q in plans):
             break
@@ -504,34 +504,34 @@ def main():
         render(P, audio, wav)
         P["label"], P["wav"] = lab, wav
         hit = [x for x in P["accents"] if x["strength"] >= 0.45 and x["kind"] != "kraj"]
-        print(f"\n{lab}: {wav}  ({len(P['joins'])} spojeva, istezanje do {P['stretch_max'] * 100:.1f} %, ocena {P['score']})"
+        print(f"\n{lab}: {wav}  ({len(P['joins'])} joins, stretch up to {P['stretch_max'] * 100:.1f} %, score {P['score']})"
               + (f"  ! {P['note']}" if P.get("note") else "")
-              + (f"  (isti udarac {P['repeats'] + 1}x)" if P.get("repeats") else ""))
+              + (f"  (same hit {P['repeats'] + 1}x)" if P.get("repeats") else ""))
         for x in P["accents"]:
             if x["kind"] == "kraj":
                 continue
-            src = f" (takt iz {mmss(x['src_t'])})" if x.get("src_t") is not None else ""
+            src = f" (bar from {mmss(x['src_t'])})" if x.get("src_t") is not None else ""
             em = "" if x["error_ms"] in (None, 0) else f" {x['error_ms']:+d} ms"
-            print(f"   {'OK' if x['strength'] >= 0.45 else '--'} {x['kind']:8s} „{x['word']}“ {x['t']:6.2f}s -> {x['lands']}{src}{em}")
+            print(f"   {'OK' if x['strength'] >= 0.45 else '--'} {x['kind']:8s} '{x['word']}' {x['t']:6.2f}s -> {x['lands']}{src}{em}")
         for j in P["joins"]:
             c = "?" if j["cost"] is None else f"{j['cost']:.2f}"
-            print(f"   spoj {mmss(j['t'])}: {mmss(j['from'])} -> {mmss(j['to'])}  (cena {c}{', usred takta' if j['mid_bar'] else ''})")
+            print(f"   join {mmss(j['t'])}: {mmss(j['from'])} -> {mmss(j['to'])}  (cost {c}{', mid-bar' if j['mid_bar'] else ''})")
         c = P.get("closure")
-        print(f"   {'OK' if c and c['strength'] >= 0.5 else '--'} kraj     " + (
-            f"{c['what']} na {c['at']:.2f}s, muzika se završava na {c['ends']:.2f}s" if c else
-            "pesma nema jasan kraj - prekida se na kraju videa (izaberi drugu pesmu)"))
+        print(f"   {'OK' if c and c['strength'] >= 0.5 else '--'} ending   " + (
+            f"{c['what']} at {c['at']:.2f}s, the music ends at {c['ends']:.2f}s" if c else
+            "the track has no clear ending - it stops at the end of the video (pick another track)"))
         if P["wasted"]:
-            print(f"   jaki udarci na neoznačenim mestima (s): {', '.join(f'{w:.1f}' for w in P['wasted'])}")
+            print(f"   strong hits on unmarked places (s): {', '.join(f'{w:.1f}' for w in P['wasted'])}")
         for s in P["sfx"]:
-            print(f"   predlog efekta: {s['kind']} (vrh) na {s['at']:.2f}s - {s['why']}")
+            print(f"   suggested effect: {s['kind']} (peak) at {s['at']:.2f}s - {s['why']}")
         marks = [{"t": t, "kind": "hit"} for t in P["hits"] if 0 <= t <= vlen]
         marks += [{"t": t, "kind": "section"} for t in P["sections"] if 0 <= t <= vlen and t not in P["hits"]]
         marks += [{"t": j["t"], "kind": "join"} for j in P["joins"] if 0 <= j["t"] <= vlen]
         if P.get("closure") and P["closure"]["at"] <= vlen:
             marks.append({"t": P["closure"]["at"], "kind": "hit"})
-        tracks.append({"track": wav, "start": 0.0, "vol": 0.35, "label": lab, "title": f"aranžman {lab}",
+        tracks.append({"track": wav, "start": 0.0, "vol": 0.35, "label": lab, "title": f"arrangement {lab}",
                        "marks": sorted(marks, key=lambda m: m["t"]),
-                       "info": f"{lab}: {len(hit)}/{len([x for x in P['accents'] if x['kind'] != 'kraj'])} mesta, {len(P['joins'])} spojeva, "
+                       "info": f"{lab}: {len(hit)}/{len([x for x in P['accents'] if x['kind'] != 'kraj'])} places, {len(P['joins'])} joins, "
                                f"istezanje {P['stretch_max'] * 100:.1f} %"})
     json.dump({"track": M["track"], "map": a.map, "video_len": vlen, "tail": a.tail, "plans": plans},
               open(os.path.join(a.out_dir or ".", "arrange.json"), "w"), ensure_ascii=False, indent=1)

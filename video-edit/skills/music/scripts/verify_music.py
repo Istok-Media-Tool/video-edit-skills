@@ -117,11 +117,11 @@ def main():
         exp = exp or R["targetDurationMs"] / 1000
     if exp:
         ok = abs(dur - exp) < 0.05
-        print(f"  dužina {dur:.2f}s (očekivano {exp:.2f}s) {'OK' if ok else '--'}")
+        print(f"  length {dur:.2f}s (expected {exp:.2f}s) {'OK' if ok else '--'}")
         if abs(dur - exp) >= 0.5 or (not ok and not a.regions):
-            problems.append(f"dužina {dur:.2f}s umesto {exp:.2f}s")
+            problems.append(f"length {dur:.2f}s instead of {exp:.2f}s")
         elif not ok:
-            listen.append(f"dužina {dur:.2f}s (Epidemic bez forceDuration - rep je kraći/duži)")
+            listen.append(f"length {dur:.2f}s (Epidemic without forceDuration - the tail is shorter/longer)")
 
     # accents of an arrangement
     if P:
@@ -136,13 +136,13 @@ def main():
             snip = src[int(x["src_t"] * SR):int((x["src_t"] + 0.3) * SR)]
             at, q = find(snip, y, seg["o0"], 0.12)
             if at is None:
-                problems.append(f"„{x['word']}“: nije pronađen")
+                problems.append(f"'{x['word']}': not found")
                 continue
             err = (at - seg["o0"]) * 1000
             ok = abs(err) <= 40 and q > 0.3          # a stretched or quiet bar matches less than 1
-            print(f"  {'OK' if ok else '--'} {x['kind']:8s} „{x['word']}“ {x['lands']}: {err:+.0f} ms (sličnost {q:.2f})")
+            print(f"  {'OK' if ok else '--'} {x['kind']:8s} \'{x['word']}\' {x['lands']}: {err:+.0f} ms (similarity {q:.2f})")
             if not ok:
-                problems.append(f"„{x['word']}“ {err:+.0f} ms")
+                problems.append(f"'{x['word']}' {err:+.0f} ms")
     # Epidemic edit regions
     errs = []
     if a.regions:
@@ -155,20 +155,20 @@ def main():
             ok = err is not None and abs(err) <= 40 and q > 0.5
             if err is not None and q > 0.5:
                 errs.append(err)
-            print(f"  {'OK' if ok else '--'} deo {s0:.2f}s originala -> u verziji na "
-                  f"{'?' if at is None else f'{at:.3f}s'} (traženo {want:.3f}s, {'' if err is None else f'{err:+.0f} ms, '}sličnost {q:.2f})")
+            print(f"  {'OK' if ok else '--'} part {s0:.2f}s of the original -> in this version at "
+                  f"{'?' if at is None else f'{at:.3f}s'} (wanted {want:.3f}s, {'' if err is None else f'{err:+.0f} ms, '}similarity {q:.2f})")
             if not ok:
-                problems.append(f"deo sa {s0:.2f}s nije na {want:.3f}s")
+                problems.append(f"the part from {s0:.2f}s is not at {want:.3f}s")
         # Epidemic places regions on its own grid: one shift of the whole edit can fix them all
         if errs:
             shift = float(np.median(errs)) / 1000
             left = [e / 1000 - shift for e in errs]
             fixed = all(abs(e) <= 0.04 for e in left)
-            print(f"  pomak cele verzije: {shift * 1000:+.0f} ms -> mix_bed.py --track-start {shift:.3f}"
-                  + (" (posle toga svi delovi na mestu)" if fixed else
-                     f" (i posle toga: {', '.join(f'{e * 1000:+.0f} ms' for e in left)})"))
+            print(f"  shift of the whole version: {shift * 1000:+.0f} ms -> mix_bed.py --track-start {shift:.3f}"
+                  + (" (after that every part is in place)" if fixed else
+                     f" (still after that: {', '.join(f'{e * 1000:+.0f} ms' for e in left)})"))
             if fixed:
-                problems = [p for p in problems if not p.startswith("deo sa")]
+                problems = [p for p in problems if not p.startswith("the part from")]
             print(f"SHIFT {shift:.3f}")
 
     # seams, against the track's own bar lines
@@ -188,15 +188,15 @@ def main():
                 continue
             flags = []
             if st["click"] > 6:
-                flags.append(f"klik +{st['click']:.0f} dB")
+                flags.append(f"click +{st['click']:.0f} dB")
             if st["level"] > max(3.0, lv * 1.5):
-                flags.append(f"skok jačine {st['level']:.1f} dB")
+                flags.append(f"level jump {st['level']:.1f} dB")
             if st["timbre"] > tb * 1.5:
-                flags.append("promena boje")
+                flags.append("timbre change")
             m = int(t // 60)
-            print(f"  spoj {m}:{t % 60:05.2f}: {'OK' if not flags else ', '.join(flags)}")
-            if any(f.startswith("klik") for f in flags):
-                problems.append(f"klik na spoju {t:.2f}s")
+            print(f"  join {m}:{t % 60:05.2f}: {'OK' if not flags else ', '.join(flags)}")
+            if any(f.startswith("click") for f in flags):
+                problems.append(f"click at the join {t:.2f}s")
             elif flags:
                 listen.append(t)
 
@@ -228,11 +228,11 @@ def main():
         gaps.append(t)
     for t in gaps:
         # without a map of the source a rest of the music can't be told from a hole: listen
-        (problems if P else listen).append(f"rupa u muzici na {t:.2f}s" if P else t)
-    print(f"  rupe: {'nema' if not gaps else ', '.join(f'{t:.2f}s' for t in gaps)}")
+        (problems if P else listen).append(f"hole in the music at {t:.2f}s" if P else t)
+    print(f"  holes: {'none' if not gaps else ', '.join(f'{t:.2f}s' for t in gaps)}")
 
     if listen:
-        print("  preslušaj: " + ", ".join(f"{t:.2f}s" if isinstance(t, float) else str(t) for t in listen))
+        print("  listen: " + ", ".join(f"{t:.2f}s" if isinstance(t, float) else str(t) for t in listen))
     if problems:
         print("PROBLEM: " + "; ".join(problems))
         sys.exit(1)

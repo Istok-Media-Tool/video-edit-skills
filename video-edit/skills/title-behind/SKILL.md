@@ -8,6 +8,10 @@ description: Opening title with a huge number or word BEHIND the speaker's head 
 
 # Title behind the speaker
 
+> **Style:** Istok house style by default (`basic/STYLE.md` in this package,
+> `$SKILLS/basic/STYLE.md`). If `~/.config/video-edit/style.md` exists,
+> read it first - the person's own rules there win over every house rule below.
+
 ## Why this exists
 
 Approved on a real reel (2026-11-05) after the user sent

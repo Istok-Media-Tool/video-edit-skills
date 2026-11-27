@@ -1,76 +1,99 @@
-# video-edit-skills
+# ISTOK video-edit skills
 
-Skillovi za Claude Code za montažu talking-head videa (rilovi za Instagram/TikTok).
-Snimiš sve u jednom kadru, sa greškama i dublovima, a Claude iseče video po scenariju,
-doda zum, titlove, B-roll, close-up snimke, naslov iza glave, muziku i grafike.
+Claude Code skills for editing talking-head reels (Instagram / TikTok / Shorts).
+Record everything in one take, with mistakes and retakes. Claude cuts it by your
+script, then adds zoom, captions, B-roll, close-ups, a title behind your head,
+music that hits your key words, and chapter graphics, all in the **Istok
+house style**.
 
-*Claude Code skills for editing talking-head reels: cut a single raw take by the script,
-then zoom, captions, B-roll, close-ups, a title behind the head, music and chapter cards.*
+> **For ISTOK course students only.** The repository is public so installing
+> and updating is one command, but the skills are licensed only to people
+> enrolled in the ISTOK course. See [LICENSE](LICENSE).
 
-## Instalacija
+## Install
 
-U Claude Code-u:
+In Claude Code:
 
 ```
 /plugin marketplace add Istok-Media-Tool/video-edit-skills
 /plugin install video-edit@video-edit-skills
 ```
 
-Repo je javan, pa ti ne treba nikakav pristup ni prijava na GitHub.
+Then ask Claude: **"Check my setup for the video-edit skills."** It runs
+`setup_check.py` and tells you what is missing and how to install it. It
+installs nothing without your OK.
 
-## Automatsko ažuriranje (uradi jednom)
+### Turn on auto-update (once)
 
-Skillovi se redovno dopunjuju. Da bi ti Claude Code sam povlačio nove verzije:
-
-1. U Claude Code-u ukucaj `/plugin`
+1. In Claude Code type `/plugin`
 2. Marketplaces → `video-edit-skills` → **Enable auto-update**
 
-Posle toga se nova verzija preuzima pri svakom pokretanju Claude Code-a.
-Ručno ažuriranje, kad god hoćeš: `/plugin marketplace update video-edit-skills`
+New versions then download when Claude Code starts. To update by hand:
+`/plugin marketplace update video-edit-skills`
 
-## Šta je unutra
+## What you need
 
-| Skill | Šta radi |
+- **macOS** (Apple Silicon or Intel). Captions are checked against faces with
+  Apple Vision and video is encoded with Apple VideoToolbox, so Windows and
+  Linux are not supported yet.
+- [Homebrew](https://brew.sh), then:
+  `brew install ffmpeg ffmpeg-full rubberband node` and `brew install --cask font-inter`
+- Xcode Command Line Tools: `xcode-select --install`
+- Python 3.9+ with `numpy`, `scipy`, `opencv-python`
+- For the title behind the head, chapter cards and scrapbook: the HyperFrames
+  skills and CLI (`npx hyperframes`)
+
+## Transcription (recommended: an ElevenLabs key)
+
+Speech is transcribed in this order: **ElevenLabs** Scribe v2, then **Groq**
+Whisper, then local Whisper. With a key, a transcript takes seconds instead of
+minutes. One of the two keys is enough, and the free plans are fine.
+
+The language is detected automatically. Any language works, and Serbian always
+comes out in Latin script.
+
+1. Create a key:
+   - ElevenLabs: [elevenlabs.io/app/settings/api-keys](https://elevenlabs.io/app/settings/api-keys)
+     → Create API Key, enable Speech to Text. Copy the key that starts with `sk_`
+     (it is shown only once).
+   - Groq: [console.groq.com/keys](https://console.groq.com/keys) → Create API Key
+     (starts with `gsk_`).
+2. Tell Claude: **"Open a window so I can enter my ElevenLabs key"** (or Groq key).
+   Paste the key into that window, **never into the chat**. It is stored only on
+   your computer (`~/.config/elevenlabs/api_key` or `~/.config/groq/api_key`).
+
+Without a key everything still works, only slower, through local
+[Whisper](https://github.com/openai/whisper): `pip install -U openai-whisper`.
+
+## What's inside
+
+| Skill | What it does |
 |---|---|
-| `basic` | seče sirov snimak po scenariju (transkripcija + detekcija tišine), bira dublove, proverava svaki render (`check_video.py`) |
-| `plan-editor` | interaktivni editor u browseru: zum po rečima, ispravka titlova, B-roll, close-up klizači, dublovi jedan pored drugog, naslov |
-| `zoom` | dinamički zum, centriran na lice, bez sečenja predmeta koje pokazuješ |
-| `subtitle` | titlovi (ASS + libass), prelomi gde se prirodno pravi pauza |
-| `title-behind` | veliki naslov iza glave (osoba isečena ispred teksta) |
-| `music` | muzika ispod glasa, posebna pesma po delu videa, TV promena kanala na prelazima |
-| `chapter-cards` | kartice za delove videa, jedan šablon (neon stil 80-ih) sa vremenskom lentom |
-| `scrapbook` | TikTok „scrapbook” oko glave: isečena slova, poruka na papiru, crtež markerom, sve prati glavu kroz zum |
+| `basic` | cuts a raw take by the script (transcription + silence detection), picks takes with you, tight pacing, checks every render |
+| `plan-editor` | interactive editor in the browser: zoom by word, caption fixes, B-roll, close-up sliders, takes side by side, title, music places |
+| `zoom` | content-driven punch-in zoom, centred on the face, never cutting off what you show |
+| `subtitle` | phrase captions (ASS + libass) that break where you pause and never cover a face |
+| `title-behind` | a huge title behind your head (you are cut out in front of it) |
+| `music` | finds tracks, rearranges them so the strongest moments land on your key words, ends on the track's own final chord, mixes under the voice |
+| `chapter-cards` | one planned card system for the parts of the video, with a timeline |
+| `scrapbook` | TikTok "scrapbook" look around the head: cut-out letters, a paper note, marker doodles that follow the head through zooms |
 
-## Šta treba instalirati
+## Your own style
 
-- macOS (praćenje lica koristi Apple Vision)
-- `ffmpeg` i `ffmpeg-full` (titlovi): `brew install ffmpeg ffmpeg-full`
-- Python 3 sa `numpy`
-- Za naslov iza glave, kartice i scrapbook: HyperFrames skillovi i CLI (`npx hyperframes`), instaliraju se posebno
+The skills follow the Istok house style (summary: `video-edit/skills/basic/STYLE.md`). When
+you tell Claude a lasting preference ("always bigger captions", "no music on my
+videos"), it writes it to `~/.config/video-edit/style.md`, and from then on your
+rules win over the house style.
 
-## Transkripcija (preporučeno: ElevenLabs ključ)
+The plan editor is in English. For Serbian, put `{"ui_language": "sr"}` in
+`~/.config/video-edit/settings.json`.
 
-Skillovi transkribuju govor ovim redom: **ElevenLabs** Scribe v2, pa **Groq** Whisper,
-pa lokalni Whisper. Sa ključem je transkripcija gotova za sekundu-dve umesto za više minuta.
-Dovoljan je jedan od dva ključa, a besplatni planovi su sasvim dovoljni.
+## How to use it
 
-1. Napravi ključ:
-   - ElevenLabs: [elevenlabs.io/app/settings/api-keys](https://elevenlabs.io/app/settings/api-keys) → Create API Key,
-     uključi Speech to Text. Kopiraj ključ koji počinje sa `sk_` iz prozora koji iskoči (posle se više ne vidi).
-   - Groq: [console.groq.com/keys](https://console.groq.com/keys) → Create API Key (počinje sa `gsk_`).
-2. Reci Claude-u: **„Otvori mi prozor da unesem ElevenLabs ključ”** (ili Groq ključ).
-   Ključ nalepi u taj prozor, **nikad u chat**. Čuva se samo na tvom računaru
-   (`~/.config/elevenlabs/api_key` ili `~/.config/groq/api_key`).
+Just talk to Claude, in any language, for example:
 
-Bez ključa sve radi i dalje, samo sporije, preko lokalnog
-[Whisper-a](https://github.com/openai/whisper): `pip install -U openai-whisper`.
-
-## Kako se koristi
-
-Samo pričaj sa Claude-om, npr.:
-
-- „Snimio sam video u jednom komadu, iseci ga po scenariju” (+ video i scenario)
-- „Otvori editor”, „dodaj zum”, „stavi titlove”, „ubaci B-roll”
-- „Stavi naslov MODA iza glave”
-- „Dodaj muziku, posebnu za svaki deo”
-- „Napravi kartice za svaki period”
+- "I recorded the video in one take, cut it by the script" (attach the video and script)
+- "Open the editor", "add zoom", "add captions", "put B-roll here"
+- "Put the title MODA behind my head"
+- "Add music that hits the punchline"
+- "Make a card for each part"

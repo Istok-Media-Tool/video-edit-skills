@@ -52,6 +52,21 @@ def api_key():
     return key
 
 
+SERBIAN = {"sr", "srp", "serbian", "hr", "hrv", "croatian", "bs", "bos", "bosnian", "sh"}
+
+
+def is_serbian(lang):
+    """Serbian (and the Croatian/Bosnian whisper sometimes reports for it):
+    transliterate any Cyrillic to Latin. Other languages are left as they are."""
+    return (lang or "").strip().lower() in SERBIAN
+
+
+def lang_arg(v):
+    """--language: empty or 'auto' = let the engine detect it."""
+    v = (v or "").strip()
+    return None if v.lower() in ("", "auto") else v
+
+
 def available():
     return bool(api_key())
 
@@ -87,7 +102,8 @@ def transcribe(path, language=None, prompt=None, words=False, model=MODEL, tries
         try:
             with urllib.request.urlopen(req, timeout=300) as r:
                 res = json.loads(r.read().decode("utf-8"))
-            if language == "sr":   # whisper often answers Serbian in Cyrillic; the reels use Latin
+            res["language"] = language or res.get("language", "")
+            if is_serbian(res["language"]):   # whisper often answers Serbian in Cyrillic; the reels use Latin
                 res["text"] = latin(res.get("text", ""))
                 for item in res.get("segments", []):
                     item["text"] = latin(item["text"])
@@ -111,12 +127,13 @@ def srt_time(t):
 
 
 if __name__ == "__main__":
-    # Whole-file overview: python3 groq_stt.py audio.wav --language sr [--out overview]
+    # Whole-file overview: python3 groq_stt.py audio.wav [--language en] [--out overview]
+    # (no --language = the language is detected)
     # writes <out>.txt and <out>.srt. For a first look only - cut points come from bursts.
     import argparse, subprocess, sys, tempfile
     ap = argparse.ArgumentParser()
     ap.add_argument("audio")
-    ap.add_argument("--language", default="sr")
+    ap.add_argument("--language", default="", help="ISO code (en, sr, de...); default: detect")
     ap.add_argument("--prompt", default="")
     ap.add_argument("--out", default="overview")
     a = ap.parse_args()
@@ -127,7 +144,7 @@ if __name__ == "__main__":
         if os.path.getsize(flac) > 24 * 1024 * 1024:
             sys.exit("Audio is over Groq's 25 MB limit - skip the overview and go straight to bursts.")
         try:
-            r = transcribe(flac, language=a.language, prompt=a.prompt or None)
+            r = transcribe(flac, language=lang_arg(a.language), prompt=a.prompt or None)
         except GroqError as err:
             sys.exit(f"{err}\nUse local whisper for the overview instead (and tell the user).")
     open(a.out + ".txt", "w", encoding="utf-8").write(r["text"].strip() + "\n")

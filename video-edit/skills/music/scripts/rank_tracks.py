@@ -8,14 +8,15 @@ best place to start it.
 For every track (track_map.py, align_music.py, arrange_music.py --score-only),
 six criteria, each measured 0..1 - the weights in rank_weights.json (next to
 this script, or --weights your.json) add up to 100, so the score is out of 100:
-- main_hits 30: poenta / promena land on a real event after arranging;
-- closure 25: the track's own ending (a final chord / hit, not a fade) -
+- main_hits: poenta / promena land on a real event after arranging;
+- closure: the track's own ending (a final chord / hit, not a fade) -
   every video ends on a clear, emphasized closure;
-- natural 20: the arrangement still sounds like the track (few joins, clean
+- natural: the arrangement still sounds like the track (few joins, clean
   seams, no event reused for several places, no level jumps at joins);
-- voice 10: the music is not busy under the voice (onset density);
-- arc 10: the music rises with the story;
-- accents 5: naglasak places on a beat of the arrangement.
+- voice: the music is not busy under the voice (onset density);
+- arc: the music rises with the story;
+- accents: naglasak places on a beat of the arrangement.
+(Current weights: main_hits 25, closure 25, natural 15, voice 7, arc 25, accents 3.)
 Tracks with vocals or shorter than the video + tail are not scored (listed
 at the bottom). Per-criterion points of every track: <work>/rank.json.
 Change the numbers in rank_weights.json to change what matters.
@@ -143,7 +144,7 @@ def main():
             row["miss"] = [f"„{x['word']}“ ({x['lands']})" for x in main if x not in main_ok]
             row["wasted"] = P["wasted"]
             parts["main_hits"] = (sum(min(1.0, x["strength"] / 0.8) for x in main) / len(main)) if main else 1.0
-            parts["accents"] = (sum(x["lands"] == "otkucaj" for x in nag) / len(nag)) if nag else 1.0
+            parts["accents"] = (sum(x["lands"] == "beat" for x in nag) / len(nag)) if nag else 1.0
             # does the arrangement still sound like the track: joins, their seams, reused events, level jumps
             bars = M["bars"]
             J = P["joins"]
@@ -171,7 +172,7 @@ def main():
         row["close_txt"] = cl.get("what", "-")
         row["parts"] = {k: round(v, 2) for k, v in parts.items()}
         row["out"] = ("vokal" if info.get("vocals") else "prekratka" if short
-                      else "aranžman nije uspeo" if row.get("arr_failed") else None)
+                      else "arrangement failed" if row.get("arr_failed") else None)
         row["score"] = None if row["out"] else round(sum(W.get(k, 0) * v for k, v in parts.items()), 1)
         rows.append(row)
 
@@ -181,26 +182,26 @@ def main():
                 "points": {k: round(W.get(k, 0) * v, 1) for k, v in r["parts"].items() if k in W}} for r in rows],
               open(os.path.join(a.work, "rank.json"), "w"), ensure_ascii=False, indent=1)
     print(f"video {vlen:.1f}s + tail {a.tail}s, {len(rows)} tracks, weights {a.weights}")
-    print("ocena od 100 = " + " + ".join(f"{k} {W[k]:g}" for k in W) + " (svaki kriterijum 0..1)\n")
-    print(f"{'#':>2}  {'pesma':28s} {'BPM':>4}  {'mesta':>6} {'kraj':>5} {'spojevi':>7} {'glas':>5} {'tok':>5} "
-          f"{'nagl.':>5}  {'ocena':>5}   glavna mesta / spojeva / kraj")
+    print("score out of 100 = " + " + ".join(f"{k} {W[k]:g}" for k in W) + " (each criterion 0..1)\n")
+    print(f"{'#':>2}  {'track':28s} {'BPM':>4}  {'main':>6} {'end':>5} {'natural':>7} {'voice':>5} {'arc':>5} "
+          f"{'acc.':>5}  {'score':>5}   main places / joins / ending")
     for i, r in enumerate(rows):
         p = r["parts"]
         sc = f"{r['score']:5.1f}" if r["score"] is not None else "    -"
         print(f"{i + 1:2d}  {r['title'][:28]:28s} {r['bpm']:4.0f}  {p['main_hits']:6.2f} {p['closure']:5.2f} "
               f"{p['natural']:7.2f} {p['voice']:5.2f} {p['arc']:5.2f} {p['accents']:5.2f}  {sc}   "
-              f"{r['arr_hit']} / {r['joins']}" + (f" (isti deo {r['repeats'] + 1}x)" if r["repeats"] else "")
-              + f" / {r['close_txt']}" + (f"  ISKLJUČENA: {r['out']}" if r["out"] else ""))
+              f"{r['arr_hit']} / {r['joins']}" + (f" (same part {r['repeats'] + 1}x)" if r["repeats"] else "")
+              + f" / {r['close_txt']}" + (f"  EXCLUDED: {r['out']}" if r["out"] else ""))
         if r["miss"]:
-            print(f"      ni aranžman ne pogađa: {', '.join(r['miss'])}")
+            print(f"      even the arrangement misses: {', '.join(r['miss'])}")
         if r.get("note"):
             print(f"      {r['note']}")
-    print(f"\n(mesta = glavna mesta na pravom udarcu posle preuređivanja; kraj = završni akord pesme; "
-          f"spojevi = koliko aranžman zvuči kao pesma; glas = koliko muzika ne smeta govoru)"
-          f"\nkriterijumi i poeni: {a.work}/rank.json, slike toka: {a.work}/<pesma>.png")
+    print(f"\n(main = main places on a real hit after arranging; end = the track's final chord; "
+          f"natural = how much the arrangement sounds like the track; voice = how little the music fights the speech)"
+          f"\ncriteria and points: {a.work}/rank.json, arc pictures: {a.work}/<track>.png")
     top = [r for r in rows if r["score"] is not None][:a.top]
     q = lambda v: "'" + v + "'" if " " in v else v
-    print("\nsledeće - aranžmani za najbolje:")
+    print("\nnext - arrangements for the best:")
     for r in top:
         print(f"  arrange_music.py {q(r['map'])} {' '.join(q(x) for x in acc_args)} "
               f"--out-dir {a.work}/arr_{re.sub(r'[^A-Za-z0-9]+', '_', Path(r['track']).stem.removeprefix('ES_'))[:24].strip('_')}")
@@ -211,8 +212,8 @@ def main():
         tops = [r for r in rows if r.get("start") is not None and r["score"] is not None][:a.top]
         for i, r in enumerate(tops):
             r["label"] = chr(65 + i)
-            r["info"] = (f"{r['label']}: bez sečenja {r['plain_hit']}, aranžman {r['arr_hit']} glavnih, "
-                         f"tok {r['arc_txt']}, od {mmss(r['start'])}")
+            r["info"] = (f"{r['label']}: uncut {r['plain_hit']}, arranged {r['arr_hit']} main, "
+                         f"arc {r['arc_txt']}, from {mmss(r['start'])}")
         json.dump({"tracks": tops}, open(a.out, "w"), ensure_ascii=False, indent=1)
         print(f"-> {a.out}: make_plan_widget.py --music {a.out}; serve_plan_editor.py --music-file "
               + " ".join(Path(r["track"]).name for r in tops))

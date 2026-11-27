@@ -27,7 +27,7 @@ file), or, without it, the audio is transcribed here with stt.py (ElevenLabs,
 then Groq) - one request for the whole recording.
 
 Usage:
-  guard_word_edges.py audio.wav tight.txt safe.txt --language sr
+  guard_word_edges.py audio.wav tight.txt safe.txt [--language en]
       [--words words.json] [--pre-pad 0.04] [--post-pad 0.08]
 Then cut safe.txt with the same PRE_PAD / POST_PAD.
 """
@@ -59,13 +59,14 @@ def main():
     ap.add_argument("selections")
     ap.add_argument("out")
     ap.add_argument("--words")
-    ap.add_argument("--language", default="sr")
+    ap.add_argument("--language", default="", help="ISO code (en, sr, de...); default: detect")
     ap.add_argument("--terms", default="")
     ap.add_argument("--pre-pad", type=float, default=0.04)
     ap.add_argument("--post-pad", type=float, default=0.08)
     ap.add_argument("--head-margin", type=float, default=0.04)
     ap.add_argument("--tail-margin", type=float, default=0.06)
     a = ap.parse_args()
+    LANG = stt.groq_stt.lang_arg(a.language)   # None = detect
 
     if a.words:
         W = load_words(a.words)
@@ -78,7 +79,7 @@ def main():
                 engines.remove("groq")
             if not engines:
                 sys.exit("no ElevenLabs/Groq key - pass --words (e.g. from local whisper word_timestamps)")
-            r = stt.transcribe(flac, a.language, [t.strip() for t in a.terms.split(",") if t.strip()],
+            r = stt.transcribe(flac, LANG, [t.strip() for t in a.terms.split(",") if t.strip()],
                                words=True, engines=engines)
             print(f"word times: {r['engine']}, {len(r['words'])} words", file=sys.stderr)
             W = [(w["word"], w["start"], w["end"]) for w in r["words"]]

@@ -3,7 +3,19 @@ name: basic
 description: Cut a raw, single-take video or audio recording (a talking-head voice-over shot in one continuous take, full of retakes/false starts/flubs) down to a clean final edit that follows an intended script, using Whisper transcription cross-checked against silence detection for frame-accurate cut points, then assembled with ffmpeg. Use this skill whenever the user wants to edit raw footage against a script or scenario, mentions picking the "best take" from a recording, needs retakes/false starts removed from a single continuous take, or asks to transcribe-and-cut a video - even if they don't name Whisper or ffmpeg explicitly (e.g. "snimio sam video u jednom komadu, pomozi da ga isečem po scenariju", "imam sirov snimak sa dosta dublova, izvuci najbolje delove", "uporedi transkript sa scenariom i predloži montažu"). If the user also wants dynamic zoom/punch-ins added, see the separate "zoom" skill for that - use both together when both are asked for, but don't assume zoom is wanted just because this skill triggered.
 ---
 
+> `$SKILLS` below is the folder that holds this skill's folder: the parent of the base directory shown when the skill loads (the plugin's `skills/` folder).
+
+
 # Basic video editing (cutting raw takes to match a script)
+
+> **Style:** Istok house style by default (`basic/STYLE.md` in this package,
+> `$SKILLS/basic/STYLE.md`). If `~/.config/video-edit/style.md` exists,
+> read it first - the person's own rules there win over every house rule below.
+
+> **First run / "not found" errors:** `python3 scripts/setup_check.py` lists what
+> this Mac is missing (ffmpeg, ffmpeg-full, rubberband, Xcode tools, Node, Python
+> packages, the Inter font, transcription keys) with the command that installs
+> each. Run the install commands only after the person says yes.
 
 ## Why this skill exists
 
@@ -62,8 +74,12 @@ names the engine that answered. On Windows use a PowerShell `InputBox`.
 ### 2. Get a rough overview with a first-pass transcription
 
 ```bash
-python3 scripts/stt.py audio.wav --language <lang> --out overview
+python3 scripts/stt.py audio.wav --out overview
 ```
+
+The language is detected (the script prints it, e.g. `elevenlabs (eng)`); pass
+`--language en|sr|de|...` only to force one. Serbian, and the Croatian/Bosnian
+the detectors often report for it, always comes out in Latin script.
 
 This uses ElevenLabs Scribe v2, and Groq Whisper if ElevenLabs fails (keys in
 `~/.config/elevenlabs/api_key` and `~/.config/groq/api_key`, never printed or
@@ -96,8 +112,12 @@ expect to fit in it, something is off.
 ### 4. Transcribe each burst in isolation
 
 ```bash
-python3 scripts/transcribe_bursts.py audio.wav bursts.txt --language <lang>
+python3 scripts/transcribe_bursts.py audio.wav bursts.txt
 ```
+
+Bursts are short, so the language is detected once, from the first 40 s of
+the recording, and used for every burst (printed as `Language: ...`; sr/hr/bs
+count as Serbian - pass `--language hr` to force Croatian).
 
 By default each burst goes to ElevenLabs Scribe v2 as its own request, 4 at
 a time; Groq Whisper takes over if ElevenLabs fails, and local Whisper
@@ -163,13 +183,13 @@ Write the confirmed selections (one `start<TAB>end` pair per line, in output
 order) to a file, then:
 
 ```bash
-python3 scripts/guard_word_edges.py audio.wav selections.txt safe.txt --language sr --pre-pad 0.15 --post-pad 0.35
+python3 scripts/guard_word_edges.py audio.wav selections.txt safe.txt --pre-pad 0.15 --post-pad 0.35
 scripts/cut_and_concat.sh "<source_video>" safe.txt final_output.mp4
 ```
 
 The guard keeps every cut outside words (see "Never cut inside a word"
 under Tight pacing) - run it before every cut, with the pads you cut with.
-For the user's videos, use the Tight pacing commands below instead.
+By default (Istok house style), use the Tight pacing commands below instead.
 
 Read the comment block at the top of `cut_and_concat.sh` before running it
 manually or adapting it - it documents gotchas (ffmpeg stealing stdin from a
@@ -192,7 +212,7 @@ speaker's trailing consonant extends further than the silence detector's
 threshold caught) - increase it for that segment rather than reaching for a
 fade, which just makes a tight cut sound worse, not better.
 
-### Tight pacing - the user's standard
+### Tight pacing - the Istok house standard
 
 The default padding (0.15s / 0.35s) leaves a ~0.5s pause at every cut. The
 user found that it broke the rhythm ("mora biti sve zbijenije i tečnije"),
@@ -200,7 +220,7 @@ so for their videos tighten every cut before assembling:
 
 ```bash
 python3 scripts/tighten_cuts.py audio.wav selections.txt tight.txt --beat 1.0 --tail 2.0
-python3 scripts/guard_word_edges.py audio.wav tight.txt safe.txt --language sr --pre-pad 0.04 --post-pad 0.08
+python3 scripts/guard_word_edges.py audio.wav tight.txt safe.txt --pre-pad 0.04 --post-pad 0.08
 PRE_PAD=0.04 POST_PAD=0.08 scripts/cut_and_concat.sh "<source_video>" safe.txt final_output.mp4 <abs workdir>
 ```
 
@@ -222,8 +242,8 @@ same values as `--pre-pad` / `--post-pad`.
 It moves each edge to where speech really starts / ends (-42 dB) and
 splits any internal pause over 0.25s.
 
-The numbers come from the user's two hand-edited reference reels (vodič
-stila, 2026-11-10): median gap between words 0.06s, a new shot every ~3s,
+The numbers come from the two hand-edited Istok reference reels (style
+guide, 2026-11-10): median gap between words 0.06s, a new shot every ~3s,
 cuts always between words (often mid-sentence, on a phrase boundary), and
 only ONE pause left on purpose - a ~1s beat before the last line
 (`--beat 1.0`) and 1.5-3s after it while the speaker silently looks into
@@ -370,7 +390,7 @@ bounding box of every graphic against them. Move it in if it crosses.
 
 ## Encoder - ALWAYS Apple VideoToolbox
 
-The user's rule (2026-11-15): every H.264 encode, in every skill and every
+Istok house style: every H.264 encode, in every skill and every
 ad-hoc ffmpeg command - cuts, zoom, captions, overlays, graphics composites,
 music mixes, HyperFrames renders, previews, masters and share copies - goes
 through Apple VideoToolbox. Never pick libx264 by choice on this Mac.
@@ -441,7 +461,7 @@ in the third column failed to concat).
 ## After the cut: zoom and captions go through the plan-editor
 
 When the cut video will also get zoom/punch-ins (zoom skill) and/or
-captions (subtitle skill), the user's standard is the **plan-editor**
+captions (subtitle skill), the Istok house standard is the **plan-editor**
 skill: one interactive click-a-word tool where they decide the zoom with
 you and fix caption text in the same sentences ("Izmeni tekst"). Keep the
 kept text per clip from this skill's plan - it becomes that tool's

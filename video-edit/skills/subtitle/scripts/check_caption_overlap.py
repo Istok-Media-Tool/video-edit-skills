@@ -49,7 +49,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 SWIFT = HERE / "vision_look.swift"
 BIN = Path.home() / ".cache" / "claude-skills" / "vision_look"
-FFMPEG_FULL = "/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg"
+FFMPEG_FULL = next((p for p in ("/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg", "/usr/local/opt/ffmpeg-full/bin/ffmpeg") if os.path.exists(p)), "ffmpeg")  # keg-only, has libass
 
 
 def ts(x):
@@ -165,14 +165,14 @@ def obstacles(video, events, step, hands, W, H, ffmpeg):
         boxes = []
         for kind, x, y, w, h in items:
             if kind == "F" and h * sy >= 24:  # head: hair above, chin/beard below
-                boxes.append((x - 0.1 * w, y - 0.45 * h, x + 1.1 * w, y + 1.12 * h, "lice"))
+                boxes.append((x - 0.1 * w, y - 0.45 * h, x + 1.1 * w, y + 1.12 * h, "face"))
             elif kind == "H" and (hands == "always" or (hands == "auto" and not faces)):
-                boxes.append((x - 0.1 * w, y - 0.1 * h, x + 1.1 * w, y + 1.1 * h, "ruka"))
+                boxes.append((x - 0.1 * w, y - 0.1 * h, x + 1.1 * w, y + 1.1 * h, "hand"))
         if not faces:
             # close-up / insert: a face cut by the frame edge (only mouth and beard
             # visible) is not detected, and it sits at the top - keep the top 30%
             # free (a card moved up to dodge the hands landed on the mouth)
-            boxes.append((0, -1, st["width"], 0.30 * st["height"], "mozda lice"))
+            boxes.append((0, -1, st["width"], 0.30 * st["height"], "maybe face"))
         for i in want[n]:
             for x0, y0, x1, y1, kind in boxes:
                 res[i].append((x0 * sx, y0 * sy, x1 * sx, y1 * sy, kind, n / fps))
@@ -233,7 +233,7 @@ def main():
     for i in bad:
         e, (x0, y0, x1, y1), h = events[i], boxes[i], hits(boxes[i], obs[i], a.air)
         what = ", ".join(sorted({o[4] for o in h}))
-        print(f"{e['start']:7.2f}s  {what:10s} titl y {y0}-{y1}, prepreka y {int(min(o[1] for o in h))}-"
+        print(f"{e['start']:7.2f}s  {what:10s} caption y {y0}-{y1}, obstacle y {int(min(o[1] for o in h))}-"
               f"{int(max(o[3] for o in h))}  | {e['text'][:50]}")
     shift = {}   # event index -> new top y of its card
     left = 0
@@ -253,7 +253,7 @@ def main():
             if best_d:
                 for i in grp:
                     shift[i] = boxes[i][1] + best_d
-                print(f"-> svi titlovi stila {style} pomereni za {best_d:+d}px (ostaje {best[0]} za pojedinacno)")
+                print(f"-> all captions of style {style} moved by {best_d:+d}px ({best[0]} left to move one by one)")
         # 2. Then single cards that still touch something: nearest free height.
         for i in range(len(events)):
             if not boxes[i]:
@@ -263,17 +263,17 @@ def main():
                 continue
             e = events[i]
             if not movable(i):
-                print(f"{e['start']:7.2f}s  NE MOGU DA POMERIM (\\pos/\\move ili srednje sidro) - popravi rucno"); left += 1; continue
+                print(f"{e['start']:7.2f}s  CANNOT MOVE (\\pos/\\move or middle anchor) - fix by hand"); left += 1; continue
             cand = [y for y in range(int(zy0), int(zy1) + 1, 2) if free(i, y)]
             note = ""
             if not cand:  # a face weighs more than Instagram's button rail
                 cand = [y for y in range(int(zy0), int(zy1) + 1, 2) if free(i, y, rail=False)]
-                note = "  (desni kraj ulazi u zonu dugmica - skrati red ako mozes)"
+                note = "  (the right end reaches the button zone - shorten the line if you can)"
             if not cand:
-                print(f"{e['start']:7.2f}s  NEMA SLOBODNE VISINE u safe zoni - skrati tekst ili promeni kadar  | {e['text'][:50]}")
+                print(f"{e['start']:7.2f}s  NO FREE HEIGHT in the safe zone - shorten the text or change the shot  | {e['text'][:50]}")
                 left += 1; continue
             shift[i] = min(cand, key=lambda y: abs(y - ny))
-            print(f"{e['start']:7.2f}s  pojedinacno na y {shift[i]}  | {e['text'][:50]}{note}")
+            print(f"{e['start']:7.2f}s  moved alone to y {shift[i]}  | {e['text'][:50]}{note}")
     elif bad:
         left = len(bad)
     moves = {}
@@ -292,7 +292,7 @@ def main():
         open(a.fix, "w", encoding="utf-8").write("\n".join(lines))
     if a.pos_json:
         json.dump({str(i): v for i, v in moves.items()}, open(a.pos_json, "w"))
-    print(f"{len(events)} titlova provereno: {len(bad)} preko lica/ruke, {len(moves)} pomereno, {left} ostalo za rucno")
+    print(f"{len(events)} captions checked: {len(bad)} over the face/hand, {len(moves)} moved, {left} left for manual")
     sys.exit(1 if left else 0)
 
 

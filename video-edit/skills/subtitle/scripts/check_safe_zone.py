@@ -29,7 +29,7 @@ def ts(x):
 def main():
     ap = argparse.ArgumentParser(usage=__doc__)
     ap.add_argument("ass")
-    ap.add_argument("--ffmpeg", default="/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg")
+    ap.add_argument("--ffmpeg", default=next((p for p in ("/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg", "/usr/local/opt/ffmpeg-full/bin/ffmpeg") if os.path.exists(p)), "ffmpeg"))
     a = ap.parse_args()
     W, H = 1080, 1920
     ev = []

@@ -64,10 +64,23 @@ inline chat widget can't carry media, so don't pass these for show_widget.
 Usage:
   make_plan_widget.py sentences.txt [plan.json] [--ass captions.ass --durations 6.28,6.08,...] [--broll broll.json] [--accents accents.json] [--music music_preview.json] [--takes takes.json] [--closeups closeups.json] [--media cut.mp4 --words words.json] [--lang en] > widget.html
 """
+import os
 import argparse
 import json
 import sys
 from pathlib import Path
+
+def default_lang():
+    """Editor language: VIDEO_EDIT_LANG, else "ui_language" in
+    ~/.config/video-edit/settings.json, else English."""
+    v = os.environ.get("VIDEO_EDIT_LANG", "").strip().lower()
+    if not v:
+        try:
+            v = str(json.load(open(os.path.expanduser("~/.config/video-edit/settings.json"))).get("ui_language", "")).lower()
+        except (OSError, ValueError):
+            v = ""
+    return v if v in ("sr", "en") else "en"
+
 
 TEMPLATE = Path(__file__).resolve().parent.parent / "assets" / "plan_editor_widget.html"
 # --lang en: the same editor with English text (reply keys and JSON values are identical)
@@ -204,8 +217,8 @@ def main():
     ap.add_argument("--zoom-labels",
                     help="names of zoom levels 0-4, | separated (a 1080p source: 1,0×|1,2×|1,35×|1,5×|1,7×); "
                     "default 1,0×|1,5×|1,7×|2,0×|2,2× (--lang en: 1.0×|1.5×|1.7×|2.0×|2.2×)")
-    ap.add_argument("--lang", choices=("sr", "en"), default="sr",
-                    help="language of the editor's text (default sr); en uses assets/plan_editor_widget_en.html")
+    ap.add_argument("--lang", choices=("sr", "en"), default=default_lang(),
+                    help="language of the editor's text (default: ui_language in ~/.config/video-edit/settings.json, else en)")
     ap.add_argument("--takes", help="takes.json from make_take_clips.py - shows the Dublovi mode (browser pane only)")
     a = ap.parse_args()
     if a.zoom_labels is None:

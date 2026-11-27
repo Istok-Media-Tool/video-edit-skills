@@ -3,24 +3,31 @@ name: music
 description: Add background music to a video so its strongest moments land on the video's key words - finding candidate tracks on Epidemic Sound (connector), mapping each track (beats, bars, sections, hits, build-ups, stems, seamless joins), ranking them by the places marked in the plan-editor, RE-ARRANGING the chosen track bar by bar (locally, or with Epidemic's EditRecording) so poenta / promena hit exactly, adding sound effects (riser, impact) where the music has nothing, ending every video on the track's own final chord (a clear closure, never a fade), and mixing it under the voice. Use this skill whenever the user wants muzika/music/soundtrack/background track added to a video, wants the music to hit specific moments, wants to change the music bed on a video that already has one, or asks to balance music vs. voice levels - even without naming ffmpeg or a specific music service (e.g. "dodaj muziku", "stavi neku pesmu u pozadini", "neka muzika udari na poenti", "preuredi pesmu", "muzika je prejaka/preslaba"). Normally applied to a video that's already cut (**basic** skill) and may already have captions (**subtitle** skill) - don't assume those steps are also wanted just because this skill triggered.
 ---
 
+> `$SKILLS` below is the folder that holds this skill's folder: the parent of the base directory shown when the skill loads (the plugin's `skills/` folder).
+
+
 # Adding background music
+
+> **Style:** Istok house style by default (`basic/STYLE.md` in this package,
+> `$SKILLS/basic/STYLE.md`). If `~/.config/video-edit/style.md` exists,
+> read it first - the person's own rules there win over every house rule below.
 
 ## Why this skill exists
 
 Claude can't hear music, so everything that matters about it is measured:
 where the beats, bars, sections and hits are, which bars can be joined
 without it being heard, where a re-arranged track really put its hits, and
-how loud it sits under the voice. The user's goal (2026-11-10): pick the
+how loud it sits under the voice. The goal: pick the
 track that fits the video best by the criteria we set, then re-arrange its
 parts so the music hits on the key moments of the video.
 
 ## The ending - a clear, emphasized closure, every video
 
-The user's rule (2026-11-10): **at the end of every video the music has a
+Istok house style: **at the end of every video the music has a
 clear, emphasized closure** - the track's own final chord / hit, never a
 fade-out, never a cut. It is built into every step:
 - `track_map.py` finds the closure (the track's last loud attack, how long
-  it rings, strength 0..1: "završni akord odzvoni", "utapa se");
+  it rings, strength 0..1: "final chord rings out", "fades out");
 - `rank_tracks.py` weighs it (25 of 100) - a track that fades out ranks low;
 - `arrange_music.py` ends every version on it: the final chord lands right
   after the last word (`--close-at`, default last word end + 0.12 s) and
@@ -89,7 +96,7 @@ python3 scripts/rank_tracks.py music/*.mp3 --meta music/meta.json --accents ... 
 
 Every track is arranged for the marked places (score only, no audio) and
 scored out of 100 - six criteria, each measured 0..1, with the weights
-agreed with the user (2026-11-12: main places, ending and arc count the same) in **`scripts/rank_weights.json`**:
+Istok house weights (main places, ending and arc count the same) in **`scripts/rank_weights.json`**:
 
 | criterion | weight | measures |
 |---|---|---|
@@ -173,7 +180,7 @@ really landed (cross-correlation with the source bar, ms), every join
 holes in the music (against the source at the same place - a rest the
 track has anyway is fine), length. Epidemic edits: `--regions req.json
 --source full.wav` (collect runs it). Only "OK - nothing found" goes to
-the editor; "preslušaj" lists the seams to listen to. Tested: a 120 ms
+the editor; "listen" lists the seams to listen to. Tested: a 120 ms
 hole and a 3-sample click at a join were caught; the real joins were not
 flagged.
 
@@ -226,7 +233,7 @@ python3 scripts/mix_bed.py video.mp4 music/arr/arr_A.wav out.mp4 --words words.j
   [--track-start 0 | <shift of an Epidemic edit>] [--sfx sfx.json] [--sting hit.wav --sting-at 101.3]
 ```
 
-The user's reference style (vodič stila, 2026-11-10): quiet music under
+The Istok reference style (style guide): quiet music under
 the WHOLE video, `--under 22` dB under the voice's mean, so no pause is
 dead silent; after the last word the track's final chord comes up and
 rings out while the speaker silently looks into the camera (basic's
@@ -239,8 +246,8 @@ on the output, then listen to the last word, the final chord and the ✂ seams.
 A negative `--track-start` delays the track (an edit whose regions landed
 early).
 
-**Master: the user's Broadcast multiband.** Before the -14 LUFS pass,
-`mix_bed.py` runs the whole mix through the user's Premiere Multiband
+**Master: the Istok Broadcast multiband.** Before the -14 LUFS pass,
+`mix_bed.py` runs the whole mix through Istok's Premiere Multiband
 Compressor "Broadcast" preset, a bit stronger (default `--master broadcast`;
 `--master none` skips it). Chosen on 2026-11-10 after an A/B: the exact
 preset sounded no different from a plain loudness pass, a much heavier

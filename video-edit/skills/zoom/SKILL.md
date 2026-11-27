@@ -8,6 +8,10 @@ description: Plan zoom together with the user in the plan-editor tool (click-a-w
 
 # Dynamic zoom
 
+> **Style:** Istok house style by default (`basic/STYLE.md` in this package,
+> `$SKILLS/basic/STYLE.md`). If `~/.config/video-edit/style.md` exists,
+> read it first - the person's own rules there win over every house rule below.
+
 ## Why this skill exists
 
 Adding "dynamic" zoom to a cut talking-head video is deceptively easy to get
@@ -51,7 +55,7 @@ worth not re-learning from scratch:
 ## Step 1: Plan the zoom TOGETHER in the plan-editor tool
 
 Mandatory for every video: load and follow the **plan-editor** skill
-(`$SKILLS/plan-editor/SKILL.md`). It is the user's standard
+(`$SKILLS/plan-editor/SKILL.md`). It is the Istok house standard
 click-a-word tool where they decide the zoom with you and, via "Izmeni
 tekst", fix caption text in the same sentences. Never render zoom from a
 plan the user hasn't shaped there.
@@ -161,7 +165,7 @@ Only after this passes should you render all segments and concatenate.
    previous zoom render - padding must match), and note that render's
    per-clip durations (ffprobe each `clip_NNN.mp4` in its workdir):
    ```bash
-   python3 scripts/word_times.py cut_render.mp4 words.json --language sr
+   python3 scripts/word_times.py cut_render.mp4 words.json
    ```
 2. Build the selections file. `cuts.txt` = the basic skill's unpadded
    `start<TAB>end` per clip; `pos.json` = `[[cx, head_top_y], ...]` per clip

@@ -3,7 +3,14 @@ name: scrapbook
 description: TikTok "scrapbook" look around the speaker's head in a talking-head reel - ransom-note letters cut from paper, a torn notebook note with tape, white marker doodles (halo, sparkles, arrow) that stick to the tracked head and follow it through zooms. Made with HyperFrames. Use when the user wants scrapbook estetiku, elemente oko glave, nalepnice/doodle oko subjekta, "kao na TikToku oko glave", or stickers that follow the head.
 ---
 
+> `$SKILLS` below is the folder that holds this skill's folder: the parent of the base directory shown when the skill loads (the plugin's `skills/` folder).
+
+
 # Scrapbook around the head
+
+> **Style:** Istok house style by default (`basic/STYLE.md` in this package,
+> `$SKILLS/basic/STYLE.md`). If `~/.config/video-edit/style.md` exists,
+> read it first - the person's own rules there win over every house rule below.
 
 Approved on the decades reel (v18, 2026-11-05), replacing the chapter cards
 ("Bez kartica onda"). Same rule as chapter-cards: one planned

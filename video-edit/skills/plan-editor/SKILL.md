@@ -1,12 +1,16 @@
 ---
 name: plan-editor
-description: The user's STANDARD, complete editing workflow for every talking-head video after the cut - one interactive editor (browser pane, with the video and sound) where the user decides TOGETHER with Claude, word by word, where zoom changes land, fixes caption text, marks B-roll (video or image) from one word to another, and moves each caption screen up or down so it never covers the face; then one command renders the final video from what they sent. Use it EVERY time a video gets zoom/punch-ins, captions or B-roll, before rendering - and whenever the user wants to review or change the plan (e.g. "otvori plan", "otvori editor", "plan zuma", "hajde zajedno da odlučimo zum", "da ispravim titl", "pomeri titl", "titl prekriva lice", "ubaci b roll", "stavi sliku preko", "pomeri close up", "close up ranije / kasnije", "preslušaj", "poslao sam"). Works for any script and any language. Builds on the basic (cut), zoom (crop math) and subtitle (caption style) skills.
+description: The STANDARD (Istok house style), complete editing workflow for every talking-head video after the cut - one interactive editor (browser pane, with the video and sound) where the user decides TOGETHER with Claude, word by word, where zoom changes land, fixes caption text, marks B-roll (video or image) from one word to another, and moves each caption screen up or down so it never covers the face; then one command renders the final video from what they sent. Use it EVERY time a video gets zoom/punch-ins, captions or B-roll, before rendering - and whenever the user wants to review or change the plan (e.g. "otvori plan", "otvori editor", "plan zuma", "hajde zajedno da odlučimo zum", "da ispravim titl", "pomeri titl", "titl prekriva lice", "ubaci b roll", "stavi sliku preko", "pomeri close up", "close up ranije / kasnije", "preslušaj", "poslao sam"). Works for any script and any language. Builds on the basic (cut), zoom (crop math) and subtitle (caption style) skills.
 ---
 
 > `$SKILLS` below is the folder that holds this skill's folder: the parent of the base directory shown when the skill loads (the plugin's `skills/` folder).
 
 
 # Plan editor - the complete edit after the cut
+
+> **Style:** Istok house style by default (`basic/STYLE.md` in this package,
+> `$SKILLS/basic/STYLE.md`). If `~/.config/video-edit/style.md` exists,
+> read it first - the person's own rules there win over every house rule below.
 
 ## Why this exists
 
@@ -34,9 +38,9 @@ Every rule here came from the user rejecting something:
 Never render zoom, B-roll or captions from a plan the user hasn't seen in
 this editor. Their "Pošalji plan" counts as approval to render.
 
-## The look - approved by the user, keep it
+## The look - Istok house style, keep it
 
-The user confirmed this exact editor (reel "Moda nekad i sad",
+Istok confirmed this exact editor (reel "Moda nekad i sad",
 2026-11-03) and wants it used the same way on EVERY video. New features
 are ADDED to it as another mode or control in the same style; never
 redesign, restyle or replace it with a different page.
@@ -166,7 +170,7 @@ then plays the video from that word. Zoom marks (blue) and B-roll ranges
   over that zone (+40px air), and a title with no room above the head goes
   under the chin (on "REKLAMA 1": head 258-730, title at y 800). Look at a
   frame of the title before sending. The preview box takes the title style's
-  OutlineColour (this user's title box on "REKLAMA 1": dark red #B3121C,
+  OutlineColour (the Istok title box on "REKLAMA 1": dark red #B3121C,
   `&H001C12B3` as OutlineColour and BackColour).
   it. It reads the existing title from `--ass` (the first Dialogue whose
   Style isn't Default) - so put the title in captions.ass with its own
@@ -294,9 +298,9 @@ into closeups.txt (name, from, to, in) and render the media with an overlays.jso
 "insert". Open EVERY mode that has material: close-ups, Zoom frames (zcrops.json from the
 selections), Takes (from the take map) - never only the plan and captions.
 
-English UI: `make_plan_widget.py --lang en` + `serve_plan_editor.py --lang en`
-(assets/plan_editor_widget_en.html; reply keys unchanged). This user asked for English on
-2026-11-23.
+Editor language: English by default (assets/plan_editor_widget_en.html). Serbian with
+`--lang sr` on both scripts, or for every run `{"ui_language": "sr"}` in
+`~/.config/video-edit/settings.json` (or `VIDEO_EDIT_LANG=sr`). Reply keys are the same in both.
 
 The reply carries `CLOSEUPS_JSON` (all close-ups, new start/end, `off`
 moved with the start). `apply_closeups.py plan_reply.txt old.txt new.txt
@@ -373,7 +377,7 @@ source, cuts, positions, pre_filter, ass, words, durations - the files from
    to-word end + 0.10s, media covers the frame, short video holds its last
    frame, speaker audio stays; every PHOTO gets a slow, continuous
    zoom-in for its whole range - 2.5 %/s, 1.0 -> ~1.1x over 4 s - never a
-   static picture: the user's rule, 2026-11-20. This is the default; a
+   static picture: Istok house style. This is the default; a
    range's own `"kb"` or project.json `"kenburns"` changes the speed, and
    0 (no move) only when the user asks for a still photo). It STOPS if a `media` isn't a real file:
    find a bare name with

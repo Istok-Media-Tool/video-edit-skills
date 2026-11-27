@@ -3,7 +3,14 @@ name: subtitle
 description: Burn styled, readable captions/subtitles into a video using a real ASS subtitle file and ffmpeg's libass renderer (not drawtext hacks). Use this skill whenever the user wants titlovi/subtitles/captions added or burned into a video, wants text overlay synced to speech, or asks to change subtitle font/size/position/line-breaks on an existing captioned video - even if they don't say "ASS" or "libass" explicitly (e.g. "dodaj titlove", "stavi tekst na video", "promeni font na titlovima"). Normally applied to a video already cut to its final sequence (see the "basic" skill) and optionally already reframed/zoomed (see the "zoom" skill) - don't assume those steps are also wanted just because this skill triggered.
 ---
 
+> `$SKILLS` below is the folder that holds this skill's folder: the parent of the base directory shown when the skill loads (the plugin's `skills/` folder).
+
+
 # Subtitle burning
+
+> **Style:** Istok house style by default (`basic/STYLE.md` in this package,
+> `$SKILLS/basic/STYLE.md`). If `~/.config/video-edit/style.md` exists,
+> read it first - the person's own rules there win over every house rule below.
 
 ## Why this skill exists
 
@@ -99,9 +106,9 @@ clip's own start/end to match where speech actually starts/stops (if the
 clips carry pre/post padding from the cut step, subtract it back out) so
 captions don't appear/disappear on dead air.
 
-## The user's reference style: phrase cards (default for new videos)
+## The Istok reference style: phrase cards (default for new videos)
 
-From the user's two hand-edited reference reels (vodič stila, 2026-11-10).
+From the two hand-edited Istok reference reels (style guide, 2026-11-10).
 Use it for every new video unless the user asks for the older
 sentence-per-screen style (Step 3 template) or the project already has
 captions in it:
@@ -342,7 +349,7 @@ underlying video itself changed.
 ### Fixing wrong words through the interactive tool
 
 The user prefers to correct caption text themselves in the same
-plan-editor tool (plan-editor skill - the user's standard editor): with the
+plan-editor tool (plan-editor skill - the Istok house standard editor): with the
 "Izmeni tekst" toggle every sentence becomes editable in place. Whenever captions
 exist, show that tool with `--ass captions.ass --durations ...` (see the
 plan-editor skill) instead of asking for corrections in prose - also when only the

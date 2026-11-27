@@ -108,15 +108,15 @@ def main():
         """(score 0..~2, event time, what) of the best event for this accent at track time tau."""
         cands = []
         if kind == "promena":
-            cands += [(g(tau - t) * (1 + st / 6) * (1.3 if round(t, 2) in hit_ts else 1), t, "nov deo pesme")
+            cands += [(g(tau - t) * (1 + st / 6) * (1.3 if round(t, 2) in hit_ts else 1), t, "new section")
                       for t, st in secs]
         if kind in ("poenta", "promena"):
-            cands += [(g(tau - t) * (1 + st / 6) * (1 if kind == "poenta" else 0.6), t, f"udarac +{st:.0f} dB")
+            cands += [(g(tau - t) * (1 + st / 6) * (1 if kind == "poenta" else 0.6), t, f"hit +{st:.0f} dB")
                       for t, st in hits]
-            cands += [(g(tau - t) * 0.35 * (0.5 + l), t, "takt") for t, l in downs]
+            cands += [(g(tau - t) * 0.35 * (0.5 + l), t, "bar") for t, l in downs]
         if kind == "naglasak":
-            cands += [(g(tau - t) * (0.6 + 0.4 * l), t, "takt") for t, l in downs]
-            cands += [(g(tau - t) * 0.35, t, "udarac") for t in M["beats"]]
+            cands += [(g(tau - t) * (0.6 + 0.4 * l), t, "bar") for t, l in downs]
+            cands += [(g(tau - t) * 0.35, t, "beat") for t in M["beats"]]
         return max(cands) if cands else (0, None, "")
 
     def score(s):

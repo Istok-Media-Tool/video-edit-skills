@@ -138,7 +138,7 @@ def closure(frame_db, fps, med, bars):
     n = len(sm)
     alive = np.nonzero(sm > med - 40)[0]
     if not len(alive):
-        return {"t": None, "ring": 0.0, "strength": 0.0, "what": "tiho"}
+        return {"t": None, "ring": 0.0, "strength": 0.0, "what": "silent"}
     e = int(alive[-1])
     end_t = e / fps
     d = max(1, int(0.1 * fps))
@@ -149,7 +149,7 @@ def closure(frame_db, fps, med, bars):
     cand = [k for k in range(lo, e) if rise[k] >= 2 and sm[k] >= med - 6
             and rise[k] == rise[max(0, k - d):k + d].max()]
     if not cand:
-        return {"t": None, "ring": 0.0, "strength": 0.0, "what": "utapa se (nema završnog udarca)"}
+        return {"t": None, "ring": 0.0, "strength": 0.0, "what": "fades out (no final hit)"}
     k = cand[-1]
     pk = k + int(np.argmax(sm[k:k + int(0.25 * fps)]))               # the attack's peak
     t = k / fps - 0.05
@@ -165,9 +165,9 @@ def closure(frame_db, fps, med, bars):
     sinking = bool(len(body)) and np.median(body) - level > 6
     s = loud * (0.5 + 0.5 * attack) * clean * ringf * (0.3 if sinking else 1.0)
     on = bool(len(bars)) and np.abs(np.asarray(bars) - t).min() <= 0.08
-    what = ("završni udarac" if ring < 1.2 else "završni akord odzvoni") + (" na taktu" if on else "")
+    what = ("final hit" if ring < 1.2 else "final chord rings out") + (" on the bar" if on else "")
     if s < 0.5:
-        what = "utapa se" if sinking else "slab kraj"
+        what = "fades out" if sinking else "weak ending"
     return {"t": round(float(t), 3), "ring": round(float(ring), 2), "strength": round(float(min(1.0, s)), 2),
             "what": what, "on_bar": bool(on)}
 

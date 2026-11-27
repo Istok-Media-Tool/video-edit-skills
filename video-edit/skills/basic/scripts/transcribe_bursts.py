@@ -21,7 +21,7 @@ The local whisper model is loaded ONCE for the whole batch (not once per clip
 via the CLI) - loading it per-clip wastes minutes on a long recording.
 
 Usage:
-    python3 transcribe_bursts.py audio.wav bursts.txt --language sr [--engine auto|local] [--terms "Masterbox, Claude"]
+    python3 transcribe_bursts.py audio.wav bursts.txt [--language en] [--engine auto|local] [--terms "Masterbox, Claude"]
 
 bursts.txt: tab-separated start<TAB>end per line (output of detect_bursts.py,
 first two columns only are read).
@@ -53,13 +53,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("audio")
     ap.add_argument("bursts_file")
-    ap.add_argument("--language", default="sr")
+    ap.add_argument("--language", default="", help="ISO code (en, sr, de...); default: detect")
     ap.add_argument("--engine", choices=["auto", "local"], default="auto",
                     help="auto = ElevenLabs, then Groq, then local whisper")
     ap.add_argument("--model", default="medium", help="local whisper model (fallback only)")
     ap.add_argument("--terms", default="", help="comma-separated names/terms spelled as they should be")
     ap.add_argument("--pad", type=float, default=0.2, help="seconds of padding added before/after each burst before transcribing")
     args = ap.parse_args()
+    LANG = stt.groq_stt.lang_arg(args.language)   # None = detect
 
     bursts = []
     with open(args.bursts_file) as f:
@@ -74,6 +75,9 @@ def main():
 
     engines = stt.available() if args.engine == "auto" else []
     terms = [t.strip() for t in args.terms.split(",") if t.strip()]
+    if LANG is None and engines:
+        LANG = stt.detect_language(args.audio, engines=list(engines))
+        print(f"Language: {LANG or 'not detected - each burst is detected on its own'}", file=sys.stderr)
     if engines:
         print(f"Transcribing {len(bursts)} bursts with {' -> '.join(engines)}...", file=sys.stderr)
     else:
@@ -92,7 +96,7 @@ def main():
 
         def cloud(clip):
             try:
-                return stt.transcribe(clip, args.language, terms, engines=list(engines))["text"]
+                return stt.transcribe(clip, LANG, terms, engines=list(engines))["text"]
             except stt.STTError:
                 return None
 
@@ -106,7 +110,7 @@ def main():
                 print(f"{len(missing)} bursts failed in the cloud - transcribing them with local whisper.", file=sys.stderr)
             model = load_local(args.model)
             for i in missing:
-                texts[i] = model.transcribe(clips[i], language=args.language,
+                texts[i] = model.transcribe(clips[i], language=LANG,
                                             condition_on_previous_text=False, temperature=0)["text"].strip()
 
     for (s, e), text in zip(bursts, texts):

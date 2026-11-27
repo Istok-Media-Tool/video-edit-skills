@@ -19,7 +19,7 @@ transcribe() always returns the same shape, whichever engine answered:
    "segments": [{"start", "end", "text"}], "words": [{"word", "start", "end"}]}
 
 CLI (whole-file transcript):
-  python3 stt.py audio_or_video --language sr [--terms "Masterbox, Claude"] [--out name]
+  python3 stt.py audio_or_video [--language en] [--terms "Masterbox, Claude"] [--out name]
   writes name.txt, name.srt and name.json (default name: the input's basename)
 """
 import json
@@ -104,11 +104,12 @@ def elevenlabs(path, language=None, terms=None):
         raise STTError(f"ElevenLabs unreachable: {e.reason}")
     words = [{"word": w["text"].strip(), "start": float(w["start"]), "end": float(w["end"])}
              for w in d.get("words", []) if w.get("type") == "word" and w["text"].strip()]
-    if language == "sr":
+    lang = language or d.get("language_code", "")
+    if groq_stt.is_serbian(lang):
         for w in words:
             w["word"] = groq_stt.latin(w["word"])
     text = " ".join(w["word"] for w in words) or d.get("text", "").strip()
-    return {"engine": "elevenlabs", "text": text, "segments": segments_from_words(words), "words": words}
+    return {"engine": "elevenlabs", "language": lang, "text": text, "segments": segments_from_words(words), "words": words}
 
 
 def groq(path, language=None, terms=None, words=False):
@@ -117,7 +118,7 @@ def groq(path, language=None, terms=None, words=False):
                                 prompt=", ".join(terms) if terms else None)
     except groq_stt.GroqError as e:
         raise STTError(str(e))
-    return {"engine": "groq", "text": r.get("text", "").strip(),
+    return {"engine": "groq", "language": r.get("language", ""), "text": r.get("text", "").strip(),
             "segments": [{"start": s["start"], "end": s["end"], "text": s["text"].strip()}
                          for s in r.get("segments", [])],
             "words": [{"word": w["word"].strip(), "start": w["start"], "end": w["end"]}
@@ -140,6 +141,42 @@ def transcribe(path, language=None, terms=None, words=False, engines=None):
     raise STTError("; ".join(errors) or "no ElevenLabs or Groq key")
 
 
+ISO1 = {"srp": "sr", "serbian": "sr", "hrv": "hr", "croatian": "hr", "bos": "bs", "bosnian": "bs",
+        "eng": "en", "english": "en", "deu": "de", "ger": "de", "german": "de", "fra": "fr", "fre": "fr",
+        "french": "fr", "spa": "es", "spanish": "es", "ita": "it", "italian": "it", "por": "pt",
+        "portuguese": "pt", "nld": "nl", "dut": "nl", "dutch": "nl", "pol": "pl", "polish": "pl",
+        "rus": "ru", "russian": "ru", "ukr": "uk", "ukrainian": "uk", "tur": "tr", "turkish": "tr",
+        "ara": "ar", "arabic": "ar", "hin": "hi", "hindi": "hi", "jpn": "ja", "japanese": "ja",
+        "kor": "ko", "korean": "ko", "zho": "zh", "chi": "zh", "chinese": "zh", "slv": "sl",
+        "slovenian": "sl", "mkd": "mk", "macedonian": "mk", "bul": "bg", "bulgarian": "bg",
+        "ron": "ro", "rum": "ro", "romanian": "ro", "hun": "hu", "hungarian": "hu", "ces": "cs",
+        "cze": "cs", "czech": "cs", "ell": "el", "gre": "el", "greek": "el", "swe": "sv", "swedish": "sv"}
+
+
+def iso1(lang):
+    """Engine answer ('srp', 'Serbian', 'sr') -> 'sr'; unknown -> None (= keep detecting)."""
+    v = (lang or "").strip().lower()
+    return v if len(v) == 2 else ISO1.get(v)
+
+
+def detect_language(media, seconds=40, engines=None):
+    """Detect the spoken language once from the first `seconds` of a recording,
+    so short pieces (bursts, retakes) are all transcribed in the same language.
+    Returns an ISO 639-1 code, or None when it cannot tell."""
+    with tempfile.TemporaryDirectory() as d:
+        flac = os.path.join(d, "probe.flac")
+        subprocess.run(["ffmpeg", "-nostdin", "-y", "-i", media, "-t", str(seconds), "-vn", "-ac", "1",
+                        "-ar", "16000", flac, "-loglevel", "error"], check=True, stdin=subprocess.DEVNULL)
+        try:
+            lang = iso1(transcribe(flac, None, engines=engines).get("language"))
+        except STTError:
+            return None
+    # Serbian, Croatian and Bosnian sound alike to the detectors (a Serbian reel
+    # often comes back "hr"); the default profile speaks Serbian. Pass --language hr
+    # or bs to force the other two.
+    return "sr" if lang in ("hr", "bs") else lang
+
+
 def to_flac(src, dst):
     subprocess.run(["ffmpeg", "-nostdin", "-y", "-i", src, "-vn", "-ac", "1", "-ar", "16000",
                     dst, "-loglevel", "error"], check=True, stdin=subprocess.DEVNULL)
@@ -149,7 +186,7 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("input")
-    ap.add_argument("--language", default="sr")
+    ap.add_argument("--language", default="", help="ISO code (en, sr, de...); default: detect")
     ap.add_argument("--terms", default="", help="comma-separated names/terms spelled as they should be")
     ap.add_argument("--out", default="")
     a = ap.parse_args()
@@ -162,13 +199,13 @@ if __name__ == "__main__":
         if "groq" in engines and os.path.getsize(flac) > 24 * 1024 * 1024:
             engines.remove("groq")   # over Groq's 25 MB upload limit
         try:
-            r = transcribe(flac, a.language, terms, words=True, engines=engines)
+            r = transcribe(flac, groq_stt.lang_arg(a.language), terms, words=True, engines=engines)
         except STTError as e:
             sys.exit(f"{e}\nUse local whisper instead (and tell the user).")
     open(out + ".txt", "w", encoding="utf-8").write(r["text"] + "\n")
     with open(out + ".srt", "w", encoding="utf-8") as f:
         for i, s in enumerate(r["segments"], 1):
             f.write(f"{i}\n{groq_stt.srt_time(s['start'])} --> {groq_stt.srt_time(s['end'])}\n{s['text']}\n\n")
-    json.dump({"engine": r["engine"], "segments": r["segments"], "words": r["words"]},
+    json.dump({"engine": r["engine"], "language": r.get("language", ""), "segments": r["segments"], "words": r["words"]},
               open(out + ".json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    print(f"{r['engine']}: {out}.txt, {out}.srt, {out}.json")
+    print(f"{r['engine']} ({r.get('language') or '?'}): {out}.txt, {out}.srt, {out}.json")

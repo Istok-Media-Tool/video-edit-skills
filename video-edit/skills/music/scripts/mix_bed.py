@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Music bed + ending in the style of the user's reference reels (vodič stila,
+Music bed + ending in the Istok house style (reference reels, style guide,
 2026-11-10), in one pass:
 
 - the track runs under the WHOLE video, quiet: --under dB below the voice's
@@ -12,13 +12,13 @@ Music bed + ending in the style of the user's reference reels (vodič stila,
 - a track that has its OWN ending (arrange_music.py ends every version on
   the track's final chord, right after the last word) is never faded: it
   comes up after the last word and rings out to its natural end - every
-  video ends on a clear, emphasized closure (the user's rule). When the
+  video ends on a clear, emphasized closure (Istok house style). When the
   ring lasts past the video, the last frame is held until the music is
   gone (better: a real tail from tighten_cuts.py --tail).
 - optional sting (--sting file.wav): an impact/whoosh at --sting-at seconds
   (default: right after that silence), at -5 dBFS peak like the references
-- master (default --master broadcast): the whole mix goes through the user's
-  Premiere "Broadcast" multiband, a bit stronger (user's choice 2026-11-10):
+- master (default --master broadcast): the whole mix goes through Istok's
+  Premiere "Broadcast" multiband, a bit stronger (Istok house style):
   bands at 137 / 1147 / 6910 Hz, each compressed on its own (attack 1 ms,
   release 100 ms), the mix first set to -23 LUFS so the thresholds land
   where they do on a dry Premiere master. --master none skips it.
@@ -55,7 +55,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from venc import venc
 
-# The user's master: Premiere's Multiband Compressor "Broadcast" preset with
+# The Istok master: Premiere's Multiband Compressor "Broadcast" preset with
 # ~6 dB lower thresholds and +0.5 ratio (the exact preset sounded too close to
 # a plain loudness pass; a much heavier one was "prejaka"). Preset values for
 # reference: thresholds -20.2/-17.6/-24.8/-25 dB, ratios 3/2/2/3, gains
@@ -127,7 +127,7 @@ def main():
     ap.add_argument("--sting-at", type=float)
     ap.add_argument("--sfx", help="json list of sound effects: file, at, align (start|end), peak_db")
     ap.add_argument("--master", choices=["broadcast", "none"], default="broadcast",
-                    help="multiband master before the loudness pass (default: the user's Broadcast)")
+                    help="multiband master before the loudness pass (default: the Istok Broadcast)")
     a = ap.parse_args()
     a.lift_auto = a.lift is None
     if a.lift is None:

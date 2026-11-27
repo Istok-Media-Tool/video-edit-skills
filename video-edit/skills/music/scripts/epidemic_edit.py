@@ -84,8 +84,8 @@ def request(a):
         nbar = (x["t"] - first_at) / B
         off = abs(nbar - round(nbar)) * B
         if off > tol:
-            report.append(f"  {x['kind']:8s} „{x['word']}“ {x['t']:6.2f}s: {nbar:+.2f} taktova od „{ref['word']}“ "
-                          f"({off * 1000:.0f} ms van mreže) - Epidemic ga ne može složiti, ostaje za arrange_music.py")
+            report.append(f"  {x['kind']:8s} '{x['word']}' {x['t']:6.2f}s: {nbar:+.2f} bars from '{ref['word']}' "
+                          f"({off * 1000:.0f} ms off the grid) - Epidemic cannot place it, left to arrange_music.py")
             continue
         used.add(i)
         bd = builds.get(round(T[i], 2))
@@ -152,7 +152,7 @@ def collect(a):
         tracks.append({"track": wav, "start": round(max(0.0, shift), 3), "shift": round(shift, 3), "vol": 0.35,
                        "label": lab, "title": f"Epidemic {lab}", "marks": sorted(marks, key=lambda m: m["t"]),
                        "info": f"{lab}: Epidemic edit, pomak {shift * 1000:+.0f} ms, "
-                               f"{'delovi na mestu' if ok else 'PROMAŠUJE - vidi proveru'}"})
+                               f"{'parts in place' if ok else 'MISSES - see the check'}"})
         print(f"   -> mix_bed.py <video> {wav} out.mp4 --track-start {shift:.3f}")
     json.dump({"tracks": tracks}, open(a.out, "w"), ensure_ascii=False, indent=1)
     print(f"\n-> {a.out}: make_plan_widget.py --music {a.out}; serve_plan_editor.py --music-file "

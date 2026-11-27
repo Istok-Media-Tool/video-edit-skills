@@ -8,6 +8,10 @@ description: Chapter / era / section cards over a talking-head reel made with Hy
 
 # Chapter cards
 
+> **Style:** Istok house style by default (`basic/STYLE.md` in this package,
+> `$SKILLS/basic/STYLE.md`). If `~/.config/video-edit/style.md` exists,
+> read it first - the person's own rules there win over every house rule below.
+
 ## The rule the user set (decades reel, 2026-11-05)
 
 "Važno je da bude planski jedno u odnosu na drugo, a ne ovako random
